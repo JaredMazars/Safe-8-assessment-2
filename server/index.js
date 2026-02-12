@@ -91,6 +91,16 @@ app.use(morgan('common'));
 // ✅ Serve static frontend files in production (BEFORE other middleware)
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '..', 'dist');
+  const fs = require('fs');
+  
+  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`Looking for dist folder at: ${distPath}`);
+  console.log(`Dist folder exists: ${fs.existsSync(distPath)}`);
+  
+  if (fs.existsSync(distPath)) {
+    console.log(`Dist folder contents:`, fs.readdirSync(distPath));
+  }
+  
   app.use(express.static(distPath, {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.js')) {
@@ -102,7 +112,9 @@ if (process.env.NODE_ENV === 'production') {
       }
     }
   }));
-  console.log(`Serving static files from: ${distPath}`);
+  console.log(`✅ Serving static files from: ${distPath}`);
+} else {
+  console.log(`⚠️ Running in development mode - frontend not served`);
 }
 
 // ✅ Secure CORS setup
