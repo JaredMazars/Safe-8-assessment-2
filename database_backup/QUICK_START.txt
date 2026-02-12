@@ -1,0 +1,86 @@
+===============================================
+SAFE-8 LOCAL DATABASE QUICK START
+===============================================
+
+STEP 1: Create Local Database
+------------------------------
+Run this command in PowerShell:
+
+    cd c:\Projects\Audit\SAFE-8_Project\database_backup
+    sqlcmd -S localhost -E -i create_local_database.sql
+
+OR if you have SQL Express:
+
+    sqlcmd -S .\SQLEXPRESS -E -i create_local_database.sql
+
+
+STEP 2: Update .env File
+-------------------------
+Add these to your .env file in the SERVER folder:
+
+    DB_SERVER=localhost
+    DB_NAME=SAFE8_Local
+    DB_USER=
+    DB_PASSWORD=
+    DB_INTEGRATED_SECURITY=true
+
+
+STEP 3: Test Login
+-------------------
+1. Start server: cd server && node index.js
+2. Open: http://localhost:8080/admin/login
+3. Login with:
+   Username: admin
+   Password: Admin123!
+
+
+===============================================
+ALL LOGIN CREDENTIALS
+===============================================
+
+AZURE DATABASE (Production):
+----------------------------
+Server: safe-8-server.database.windows.net
+Database: safe-8-db
+User: safe8admin
+Password: Safe8Admin2024!
+
+
+LOCAL DATABASE (Development):
+------------------------------
+Server: localhost (or .\SQLEXPRESS)
+Database: SAFE8_Local
+Authentication: Windows Authentication (no user/pass)
+
+
+ADMIN PORTAL LOGINS:
+--------------------
+admin@forvismazars.com / Admin123!
+superadmin@forvismazars.com / Admin123!
+jared.moodley@mazars.co.za / Admin123!
+
+
+EMAIL CONFIGURATION:
+--------------------
+Gmail: jared.moodley@mazars.co.za
+App Password: egwo becy ycxu apbn
+
+
+===============================================
+TROUBLESHOOTING
+===============================================
+
+If sqlcmd not found:
+- Install SQL Server or SQL Server Express
+- Download: https://www.microsoft.com/en-us/sql-server/sql-server-downloads
+
+If connection fails:
+- Check SQL Server service is running:
+  Get-Service MSSQLSERVER
+- Or for Express:
+  Get-Service MSSQL$SQLEXPRESS
+
+Start SQL Server if stopped:
+  Start-Service MSSQLSERVER
+
+===============================================
