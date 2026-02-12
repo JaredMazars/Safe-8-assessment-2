@@ -29,6 +29,11 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      - name: Install server dependencies
+        run: |
+          cd server
+          npm install --production
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
