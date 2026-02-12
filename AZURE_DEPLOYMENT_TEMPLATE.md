@@ -1,7 +1,6 @@
-# Azure App Service Deployment - Complete Setup Guide
+# Azure App Service Deployment Guide - React + Node.js
 
-**App Name:** Safe-8-asessment  
-**Node Version:** 24 LTS  
+**Runtime:** Node.js 24 LTS  
 **Deployment Method:** GitHub Actions  
 **Database:** Azure SQL Database  
 
@@ -9,7 +8,7 @@
 
 ## Summary
 
-This document details the complete process of deploying a React + Node.js application to Azure App Service with Node 24 LTS runtime, including all issues encountered and solutions applied.
+This document provides a complete step-by-step guide for deploying a React + Node.js application to Azure App Service with Node 24 LTS runtime, including common issues and solutions.
 
 ---
 
@@ -18,7 +17,7 @@ This document details the complete process of deploying a React + Node.js applic
 - Azure subscription
 - GitHub account
 - Node.js 24 LTS installed locally
-- Azure SQL Database instance
+- Azure SQL Database instance (if applicable)
 - Git repository
 
 ---
@@ -26,7 +25,7 @@ This document details the complete process of deploying a React + Node.js applic
 ## Project Structure
 
 ```
-Safe-8-assessment-main/
+your-app-name/
 ├── dist/                    # Built React frontend (generated)
 ├── server/                  # Node.js Express backend
 │   ├── index.js            # Main server entry point
@@ -40,7 +39,7 @@ Safe-8-assessment-main/
 ├── .deployment             # Deployment configuration
 └── .github/
     └── workflows/
-        └── main_safe-8-asessment.yml  # GitHub Actions workflow
+        └── main_your-app.yml  # GitHub Actions workflow
 ```
 
 ---
@@ -69,16 +68,15 @@ Safe-8-assessment-main/
 }
 ```
 
-### 1.2 Fix Platform-Specific Dependencies
+### 1.2 Handle Platform-Specific Dependencies
 
-**Issue:** `@rollup/rollup-win32-x64-msvc` caused build failures on Linux (Azure uses Linux build agents)
+**Issue:** Platform-specific binaries (like Windows-only packages) cause build failures on Linux build agents.
 
-**Solution:** Move to optionalDependencies in package.json
+**Solution:** Move platform-specific dependencies to optionalDependencies in package.json
 ```json
 {
   "devDependencies": {
-    "vite": "^6.0.5",
-    // ... other deps
+    "vite": "^6.0.5"
   },
   "optionalDependencies": {
     "@rollup/rollup-win32-x64-msvc": "^4.55.2"
@@ -93,47 +91,47 @@ Safe-8-assessment-main/
 ### 2.1 Create App Service
 
 **Azure Portal:**
-1. Create Resource → Web App
+1. Create Resource - Web App
 2. Settings:
-   - **Name:** Safe-8-asessment
+   - **Name:** your-app-name
    - **Runtime Stack:** Node 24 LTS
    - **Operating System:** Linux
-   - **Region:** Canada Central (or your preferred region)
+   - **Region:** Your preferred region
    - **Pricing Plan:** B1 or higher
 
 ### 2.2 Configure Application Settings
 
-**Azure Portal → Configuration → Application settings:**
+**Azure Portal - Configuration - Application settings:**
 
-Add these environment variables:
+Add these environment variables (adjust to your needs):
 
 ```env
 NODE_ENV=production
-DB_SERVER=fm-sql-01.database.windows.net
-DB_NAME=SAFE8-2026-2-4-13-5
-DB_USER=admin1
-DB_PASSWORD=_KH=q=[0s79+EJn
+DB_SERVER=your-db-server.database.windows.net
+DB_NAME=your-database-name
+DB_USER=your-db-user
+DB_PASSWORD=your-db-password
 DB_ENCRYPT=yes
 DB_TRUST_SERVER_CERTIFICATE=no
 DB_PORT=1433
-JWT_SECRET=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+JWT_SECRET=your-jwt-secret-here
 JWT_EXPIRES_IN=1h
-CSRF_SECRET=a7f8e9d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9
-SESSION_SECRET=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+CSRF_SECRET=your-csrf-secret-here
+SESSION_SECRET=your-session-secret-here
 SESSION_DURATION_HOURS=8
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=jaredmoodley1212@gmail.com
-SMTP_PASS=egwo becy ycxu apbn
-ALLOWED_ORIGINS=https://safe-8-asessment.azurewebsites.net
+SMTP_USER=your-email@domain.com
+SMTP_PASS=your-email-app-password
+ALLOWED_ORIGINS=https://your-app-name.azurewebsites.net
 ```
 
-**Critical:** `NODE_ENV=production` is required for the server to serve the React frontend!
+**Critical:** NODE_ENV=production is required for the server to serve the React frontend.
 
 ### 2.3 Configure Startup Command
 
-**Azure Portal → Configuration → General settings:**
+**Azure Portal - Configuration - General settings:**
 
 **Startup Command:**
 ```bash
@@ -146,10 +144,10 @@ node server/index.js
 
 ### 3.1 Configure Deployment Center
 
-**Azure Portal → Deployment Center:**
+**Azure Portal - Deployment Center:**
 1. Source: GitHub
-2. Organization: JaredMazars
-3. Repository: Safe-8-assessment-2
+2. Organization: Your-Organization
+3. Repository: your-repo-name
 4. Branch: main
 5. Authentication: User-assigned identity
 
@@ -157,10 +155,10 @@ This automatically creates the GitHub Actions workflow file.
 
 ### 3.2 Update GitHub Actions Workflow
 
-**File:** `.github/workflows/main_safe-8-asessment.yml`
+**File:** `.github/workflows/main_your-app.yml`
 
 ```yaml
-name: Build and deploy Node.js app to Azure Web App - Safe-8-asessment
+name: Build and deploy Node.js app to Azure Web App
 
 on:
   push:
@@ -222,14 +220,14 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_... }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_... }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_... }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'Safe-8-asessment'
+          app-name: 'your-app-name'
           slot-name: 'Production'
           package: .
 ```
@@ -274,7 +272,7 @@ if (process.env.NODE_ENV === 'production') {
       }
     }
   }));
-  console.log(`✅ Serving static files from: ${distPath}`);
+  console.log(`Serving static files from: ${distPath}`);
 }
 
 // Serve React app for all non-API routes
@@ -293,7 +291,7 @@ if (process.env.NODE_ENV === 'production') {
 ```javascript
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://safe-8-asessment.azurewebsites.net',
+  'https://your-app-name.azurewebsites.net',
   process.env.CORS_ORIGIN
 ].filter(Boolean);
 
@@ -359,48 +357,48 @@ if (process.env.DB_INTEGRATED_SECURITY === 'true') {
 
 ### 5.2 Azure SQL Firewall
 
-**Azure Portal → SQL Database → Networking:**
+**Azure Portal - SQL Database - Networking:**
 - Enable "Allow Azure services and resources to access this server"
 - Add your IP if you need local access
 
 ---
 
-## Issues Encountered & Solutions
+## Common Issues and Solutions
 
 ### Issue 1: "Application Error" on Deployment
 
 **Symptom:** Blank page with "Application Error" message
 
 **Cause:** Multiple factors:
-1. Missing `NODE_ENV=production` environment variable
+1. Missing NODE_ENV=production environment variable
 2. Server dependencies not installed during build
-3. `dist` folder not being created/uploaded
+3. dist folder not being created/uploaded
 
 **Solution:**
-1. Set `NODE_ENV=production` in Azure App Settings
-2. Added server dependency installation step in workflow
-3. Changed `npm run build --if-present` to `npm run build` (mandatory)
+1. Set NODE_ENV=production in Azure App Settings
+2. Add server dependency installation step in workflow
+3. Change `npm run build --if-present` to `npm run build` (mandatory)
 
 ### Issue 2: API JSON Response Instead of React App
 
-**Symptom:** Visiting the URL showed `{"message":"SAFE-8 Assessment API",...}` instead of the React UI
+**Symptom:** Visiting the URL shows API JSON response instead of the React UI
 
-**Cause:** `NODE_ENV` was not set to `production`, so the server didn't serve static files
+**Cause:** NODE_ENV was not set to production, so the server didn't serve static files
 
-**Solution:** Set `NODE_ENV=production` in Azure Application Settings
+**Solution:** Set NODE_ENV=production in Azure Application Settings
 
 ### Issue 3: Platform-Specific Dependency Build Failure
 
 **Symptom:**
 ```
-npm error notsup Unsupported platform for @rollup/rollup-win32-x64-msvc
+npm error notsup Unsupported platform for package
 npm error notsup Valid os: win32
 npm error notsup Actual os: linux
 ```
 
-**Cause:** Windows-specific binary in `devDependencies` on Linux build agent
+**Cause:** Windows-specific binary in devDependencies on Linux build agent
 
-**Solution:** Moved to `optionalDependencies`:
+**Solution:** Move to optionalDependencies:
 ```json
 "optionalDependencies": {
   "@rollup/rollup-win32-x64-msvc": "^4.55.2"
@@ -411,13 +409,13 @@ npm error notsup Actual os: linux
 
 **Symptom:** Database connection errors in Azure logs
 
-**Cause:** Environment variables only existed in local `server/.env` file
+**Cause:** Environment variables only existed in local .env file
 
-**Solution:** Added all required environment variables to Azure App Service Configuration
+**Solution:** Add all required environment variables to Azure App Service Configuration
 
 ### Issue 5: Port Binding Issues Locally
 
-**Symptom:** `EADDRINUSE: address already in use :::5000`
+**Symptom:** EADDRINUSE: address already in use
 
 **Cause:** Multiple node processes running on the same port
 
@@ -426,7 +424,7 @@ npm error notsup Actual os: linux
 Get-Process -Name node | Stop-Process -Force
 ```
 
-Or change port in `server/.env`:
+Or change port in server/.env:
 ```env
 PORT=5001
 ```
@@ -438,20 +436,20 @@ PORT=5001
 ### Pre-Deployment
 - [ ] Node 24+ specified in package.json engines
 - [ ] Platform-specific dependencies in optionalDependencies
-- [ ] `npm run build` creates dist folder successfully
+- [ ] npm run build creates dist folder successfully
 - [ ] server/.env configured for local testing
 - [ ] Database connection tested locally
 
 ### Azure Configuration
 - [ ] App Service created with Node 24 LTS runtime
 - [ ] All environment variables added to Application Settings
-- [ ] `NODE_ENV=production` set in Application Settings
-- [ ] Startup command: `node server/index.js`
-- [ ] Azure SQL firewall allows Azure services
+- [ ] NODE_ENV=production set in Application Settings
+- [ ] Startup command: node server/index.js
+- [ ] Azure SQL firewall allows Azure services (if using database)
 
 ### GitHub Actions
 - [ ] Workflow file includes server dependency installation
-- [ ] Build step runs `npm run build` (not `--if-present`)
+- [ ] Build step runs npm run build (not --if-present)
 - [ ] Artifact upload includes entire project directory
 - [ ] Azure credentials configured in GitHub secrets
 
@@ -460,7 +458,7 @@ PORT=5001
 - [ ] Azure Log Stream shows successful startup
 - [ ] Visiting app URL loads React frontend (not API JSON)
 - [ ] API endpoints respond correctly
-- [ ] Database connection successful
+- [ ] Database connection successful (if applicable)
 
 ---
 
@@ -468,25 +466,25 @@ PORT=5001
 
 ### 1. Health Check
 ```bash
-curl https://safe-8-asessment.azurewebsites.net/health
+curl https://your-app-name.azurewebsites.net/health
 ```
 
 Should return API status JSON.
 
 ### 2. Frontend
-Visit `https://safe-8-asessment.azurewebsites.net` in browser
+Visit `https://your-app-name.azurewebsites.net` in browser
 
 Should load the React application.
 
 ### 3. View Logs
-**Azure Portal → App Service → Log stream**
+**Azure Portal - App Service - Log stream**
 
 Look for:
 ```
 NODE_ENV: production
 Looking for dist folder at: /home/site/wwwroot/dist
 Dist folder exists: true
-✅ Serving static files from: /home/site/wwwroot/dist
+Serving static files from: /home/site/wwwroot/dist
 Server started on port 8080
 Database connection pool created successfully
 ```
@@ -497,13 +495,13 @@ Database connection pool created successfully
 
 ### View Live Logs
 ```bash
-az webapp log tail --name Safe-8-asessment --resource-group <your-rg>
+az webapp log tail --name your-app-name --resource-group your-resource-group
 ```
 
 ### Common Issues
 
 **App shows API JSON instead of React:**
-- Check `NODE_ENV=production` in App Settings
+- Check NODE_ENV=production in App Settings
 - Verify dist folder exists in deployment
 - Check Log Stream for static file serving messages
 
@@ -562,16 +560,16 @@ npm run dev
 ### Azure CLI
 ```bash
 # View logs
-az webapp log tail --name Safe-8-asessment --resource-group <rg-name>
+az webapp log tail --name your-app-name --resource-group your-rg
 
 # Restart app
-az webapp restart --name Safe-8-asessment --resource-group <rg-name>
+az webapp restart --name your-app-name --resource-group your-rg
 
 # View config
-az webapp config appsettings list --name Safe-8-asessment --resource-group <rg-name>
+az webapp config appsettings list --name your-app-name --resource-group your-rg
 
 # Set environment variable
-az webapp config appsettings set --name Safe-8-asessment --resource-group <rg-name> --settings KEY=VALUE
+az webapp config appsettings set --name your-app-name --resource-group your-rg --settings KEY=VALUE
 ```
 
 ### Git
@@ -586,30 +584,21 @@ git push origin main
 
 ## Success Criteria
 
-✅ GitHub Actions workflow completes without errors  
-✅ Azure App Service status shows "Running"  
-✅ Visiting the URL loads the React frontend  
-✅ API endpoints accessible at /api/*  
-✅ Database connection successful  
-✅ No errors in Azure Log Stream  
-✅ Health check endpoint returns status  
+- GitHub Actions workflow completes without errors  
+- Azure App Service status shows "Running"  
+- Visiting the URL loads the React frontend  
+- API endpoints accessible at /api/*  
+- Database connection successful (if applicable)  
+- No errors in Azure Log Stream  
+- Health check endpoint returns status  
 
 ---
 
-## Repository Information
+## Key Lessons
 
-- **GitHub Repo:** https://github.com/JaredMazars/Safe-8-assessment-2
-- **Azure App:** https://safe-8-asessment.azurewebsites.net
-- **Node Version:** 24 LTS
-- **Database:** Azure SQL (fm-sql-01.database.windows.net)
-
----
-
-## Lessons Learned
-
-1. **NODE_ENV is critical** - Without `NODE_ENV=production`, the server won't serve static files
+1. **NODE_ENV is critical** - Without NODE_ENV=production, the server won't serve static files
 2. **Platform-specific dependencies** - Use optionalDependencies for platform-specific binaries
-3. **Build must run** - Change `--if-present` to mandatory build
+3. **Build must run** - Change --if-present to mandatory build
 4. **Server dependencies** - Must be installed separately in the workflow
 5. **Environment variables** - All must be configured in Azure App Settings
 6. **Debugging** - Add console.log statements to verify dist folder and configuration
@@ -617,6 +606,6 @@ git push origin main
 
 ---
 
-**Document Created:** February 12, 2026  
-**Last Updated:** February 12, 2026  
-**Status:** ✅ Successfully Deployed
+**Document Template Version:** 1.0  
+**Last Updated:** February 2026  
+**Recommended Runtime:** Node.js 24 LTS
