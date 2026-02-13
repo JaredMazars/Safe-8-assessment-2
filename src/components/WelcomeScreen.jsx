@@ -2,6 +2,97 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+// Helper: Validate login inputs
+const validateLoginInputs = (email, password, setLoginError) => {
+  if (!email.trim()) {
+    setLoginError('Please enter your email or username');
+    return false;
+  }
+  if (!password.trim()) {
+    setLoginError('Please enter your password');
+    return false;
+  }
+  return true;
+};
+
+// Helper: Handle successful admin login
+const handleAdminLoginSuccess = (response, navigate, setters) => {
+  localStorage.setItem('adminToken', response.data.sessionToken);
+  const { password_hash, ...safeAdminData } = response.data.admin;
+  localStorage.setItem('adminUser', JSON.stringify(safeAdminData));
+  
+  console.log('✅ Admin logged in successfully');
+  setters.setLoginEmail('');
+  setters.setLoginPassword('');
+  setters.setShowLoginForm(false);
+  navigate('/admin/dashboard');
+};
+
+// Helper: Handle successful user login
+const handleUserLoginSuccess = (response, navigate, onLogin, setters) => {
+  if (response.data.mustChangePassword) {
+    console.log('🔒 Password change required');
+    navigate('/change-password', {
+      state: {
+        email: setters.email,
+        user: response.data.user
+      }
+    });
+    return;
+  }
+  
+  onLogin(response.data);
+  setters.setLoginEmail('');
+  setters.setLoginPassword('');
+  setters.setShowLoginForm(false);
+};
+
+// Helper: Handle user login errors
+const handleUserLoginError = (error, setLoginError) => {
+  if (error.response?.status === 404) {
+    setLoginError('Invalid credentials');
+  } else if (error.response?.status === 401) {
+    const attemptsRemaining = error.response.data?.attemptsRemaining;
+    const message = attemptsRemaining 
+      ? `Invalid password. ${attemptsRemaining} attempts remaining.`
+      : 'Invalid credentials';
+    setLoginError(message);
+  } else if (error.response?.status === 423) {
+    setLoginError('Account locked due to too many failed attempts. Please try again later.');
+  } else {
+    setLoginError('Invalid credentials');
+  }
+};
+
+// Helper: Validate email format
+const isValidEmail = (email) => {
+  const emailRegex = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,}$/;
+  return emailRegex.test(email);
+};
+
+// Helper: Attempt admin login
+const attemptAdminLogin = async (email, password) => {
+  const response = await api.post('/api/admin/login', {
+    username: email,
+    password: password
+  });
+  return response.data.success ? response : null;
+};
+
+// Helper: Attempt user login
+const attemptUserLogin = async (email, password, setLoginError) => {
+  if (!isValidEmail(email)) {
+    setLoginError('Invalid credentials');
+    return null;
+  }
+  
+  const response = await api.post('/api/lead/login', {
+    email: email,
+    password: password
+  });
+  return response.data.success ? response : null;
+};
+
 const WelcomeScreen = ({
   industries,
   selectedAssessmentType,
@@ -103,13 +194,8 @@ const WelcomeScreen = ({
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
 
-    if (!loginEmail.trim()) {
-      setLoginError('Please enter your email or username');
-      return;
-    }
-
-    if (!loginPassword.trim()) {
-      setLoginError('Please enter your password');
+    // Validate inputs
+    if (!validateLoginInputs(loginEmail, loginPassword, setLoginError)) {
       return;
     }
 
@@ -117,84 +203,40 @@ const WelcomeScreen = ({
     setLoginError('');
 
     try {
-      // First, try admin login
-      try {
-        const adminResponse = await api.post('/api/admin/login', {
-          username: loginEmail,
-          password: loginPassword
-        });
+      // Create setters object for helper functions
+      const setters = {
+        setLoginEmail,
+        setLoginPassword,
+        setShowLoginForm,
+        email: loginEmail
+      };
 
-        if (adminResponse.data.success) {
-          // Admin login successful
-          localStorage.setItem('adminToken', adminResponse.data.sessionToken);
-          const { password_hash, ...safeAdminData } = adminResponse.data.admin;
-          localStorage.setItem('adminUser', JSON.stringify(safeAdminData));
-          
-          console.log('✅ Admin logged in successfully');
-          setLoginEmail('');
-          setLoginPassword('');
-          setShowLoginForm(false);
-          navigate('/admin/dashboard');
+      // Try admin login first
+      try {
+        const adminResponse = await attemptAdminLogin(loginEmail, loginPassword);
+        if (adminResponse) {
+          handleAdminLoginSuccess(adminResponse, navigate, setters);
           return;
         }
       } catch (adminError) {
-        // If admin login fails with 401 (invalid credentials), try user login
+        // Handle admin login failures
+        if (adminError.response?.status === 423) {
+          setLoginError('Account locked due to too many failed attempts. Please try again later.');
+          return;
+        }
+        
+        // If admin login fails with 401/404, try user login
         if (adminError.response?.status === 401 || adminError.response?.status === 404) {
-          // Try user login
-          const emailRegex = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,}$/;
-          
-          if (!emailRegex.test(loginEmail)) {
-            setLoginError('Invalid credentials');
-            setIsLoggingIn(false);
-            return;
-          }
-
           try {
-            const userResponse = await api.post('/api/lead/login', {
-              email: loginEmail,
-              password: loginPassword
-            });
-
-            if (userResponse.data.success) {
-              // Check if password must be changed
-              if (userResponse.data.mustChangePassword) {
-                console.log('🔒 Password change required');
-                navigate('/change-password', {
-                  state: {
-                    email: loginEmail,
-                    user: userResponse.data.user
-                  }
-                });
-                return;
-              }
-              
-              onLogin(userResponse.data);
-              setLoginEmail('');
-              setLoginPassword('');
-              setShowLoginForm(false);
+            const userResponse = await attemptUserLogin(loginEmail, loginPassword, setLoginError);
+            if (userResponse) {
+              handleUserLoginSuccess(userResponse, navigate, onLogin, setters);
               return;
             }
           } catch (userError) {
-            // Handle user login errors
-            if (userError.response?.status === 404) {
-              setLoginError('Invalid credentials');
-            } else if (userError.response?.status === 401) {
-              const attemptsRemaining = userError.response.data?.attemptsRemaining;
-              if (attemptsRemaining) {
-                setLoginError(`Invalid password. ${attemptsRemaining} attempts remaining.`);
-              } else {
-                setLoginError('Invalid credentials');
-              }
-            } else if (userError.response?.status === 423) {
-              setLoginError('Account locked due to too many failed attempts. Please try again later.');
-            } else {
-              setLoginError('Invalid credentials');
-            }
+            handleUserLoginError(userError, setLoginError);
             return;
           }
-        } else if (adminError.response?.status === 423) {
-          setLoginError('Account locked due to too many failed attempts. Please try again later.');
-          return;
         } else {
           setLoginError('Login failed. Please try again.');
           return;
