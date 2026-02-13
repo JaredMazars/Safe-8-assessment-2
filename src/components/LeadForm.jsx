@@ -69,9 +69,29 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
 
   const isTooLong = (s, max) => s.length > max;
 
-  // Hardened regexes
+  // Hardened regexes - ReDoS safe
   const safeEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const safePasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$/;
+  
+  // Safe password validation without catastrophic backtracking
+  const validatePassword = (password) => {
+    if (password.length < 8 || password.length > 128) return false;
+    
+    let hasLower = false;
+    let hasUpper = false;
+    let hasDigit = false;
+    
+    for (let i = 0; i < password.length; i++) {
+      const char = password[i];
+      if (char >= 'a' && char <= 'z') hasLower = true;
+      else if (char >= 'A' && char <= 'Z') hasUpper = true;
+      else if (char >= '0' && char <= '9') hasDigit = true;
+      
+      // Early exit if all conditions met
+      if (hasLower && hasUpper && hasDigit) return true;
+    }
+    
+    return hasLower && hasUpper && hasDigit;
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -122,7 +142,7 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
       newErrors.password = 'Password is required';
     } else if (isTooLong(password, MAX_PASSWORD_LEN)) {
       newErrors.password = 'Password is too long';
-    } else if (!safePasswordRegex.test(password)) {
+    } else if (!validatePassword(password)) {
       newErrors.password = 'Password must be at least 8 characters and contain uppercase, lowercase, and a number';
     }
 

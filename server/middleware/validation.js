@@ -137,6 +137,30 @@ export const validateLeadLogin = [
   handleValidationErrors
 ];
 
+// Safe password validation function without ReDoS vulnerability
+const validatePasswordStrength = (password) => {
+  if (password.length < 8 || password.length > 128) return false;
+  
+  let hasLower = false;
+  let hasUpper = false;
+  let hasDigit = false;
+  let hasSpecial = false;
+  const specialChars = '@$!%*?&#';
+  
+  for (let i = 0; i < password.length; i++) {
+    const char = password[i];
+    if (char >= 'a' && char <= 'z') hasLower = true;
+    else if (char >= 'A' && char <= 'Z') hasUpper = true;
+    else if (char >= '0' && char <= '9') hasDigit = true;
+    else if (specialChars.includes(char)) hasSpecial = true;
+    
+    // Early exit if all conditions met
+    if (hasLower && hasUpper && hasDigit && hasSpecial) return true;
+  }
+  
+  return hasLower && hasUpper && hasDigit && hasSpecial;
+};
+
 // ✅ Change Password Validation
 export const validatePasswordChange = [
   body('oldPassword')
@@ -145,8 +169,12 @@ export const validatePasswordChange = [
   body('newPassword')
     .notEmpty().withMessage('New password is required')
     .isLength({ min: 8, max: 128 }).withMessage('Password must be between 8 and 128 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
+    .custom((value) => {
+      if (!validatePasswordStrength(value)) {
+        throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
+      }
+      return true;
+    }),
   
   body('confirmPassword')
     .notEmpty().withMessage('Password confirmation is required')
