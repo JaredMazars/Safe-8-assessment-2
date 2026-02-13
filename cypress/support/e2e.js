@@ -1,5 +1,6 @@
 // Import commands
 import './commands';
+import 'cypress-axe';
 
 // Global before hook
 before(() => {

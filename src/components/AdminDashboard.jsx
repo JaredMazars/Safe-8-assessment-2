@@ -2310,7 +2310,7 @@ const AdminModal = ({ mode, admin, onClose, onSuccess }) => {
         submitData.password = formData.password;
       }
 
-      console.log('📤 Submitting admin data:', { ...submitData, password: '***' });
+      // console.log('📤 Submitting admin data:', { ...submitData, password: '***' });
 
       if (mode === 'create') {
         const response = await api.post('/api/admin/admins', submitData);
