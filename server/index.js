@@ -81,10 +81,38 @@ const allowedOrigins = [
   process.env.CORS_ORIGIN // Additional CORS origin from env
 ].filter(Boolean);
 
-// Middleware
+// Middleware - Configure Helmet with secure CSP
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Vite requires unsafe-inline for dev
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", // React inline styles
+        "https://fonts.googleapis.com",
+        "https://cdnjs.cloudflare.com"
+      ],
+      fontSrc: [
+        "'self'",
+        "https://fonts.gstatic.com",
+        "https://cdnjs.cloudflare.com"
+      ],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: [
+        "'self'",
+        // Allow API calls to same origin
+        process.env.NODE_ENV === 'production' 
+          ? 'https://safe-8-assessment-d8cdftfveefggkgu.canadacentral-01.azurewebsites.net'
+          : 'http://localhost:*'
+      ].filter(Boolean),
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Required for some CDN resources
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(morgan('common'));
 
