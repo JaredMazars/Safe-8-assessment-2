@@ -235,17 +235,19 @@ router.get('/users', authenticateAdmin, async (req, res) => {
     const { page = 1, limit = 50, search, industry } = req.query;
     const offset = (page - 1) * limit;
 
-    // Build query without parameters for SQL Server compatibility
+    // Build parameterized query to prevent SQL injection
     let whereConditions = [];
+    const params = [];
 
     if (search) {
-      const escapedSearch = search.replace(/'/g, "''");
-      whereConditions.push(`(contact_name LIKE '%${escapedSearch}%' OR email LIKE '%${escapedSearch}%' OR company_name LIKE '%${escapedSearch}%')`);
+      whereConditions.push(`(contact_name LIKE ? OR email LIKE ? OR company_name LIKE ?)`);
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern);
     }
 
     if (industry) {
-      const escapedIndustry = industry.replace(/'/g, "''");
-      whereConditions.push(`industry = '${escapedIndustry}'`);
+      whereConditions.push(`industry = ?`);
+      params.push(industry);
     }
 
     // Exclude soft-deleted users (email starts with 'deleted_' or contact_name is 'DELETED USER')
@@ -256,10 +258,11 @@ router.get('/users', authenticateAdmin, async (req, res) => {
 
     // Get total count
     const countSql = `SELECT COUNT(*) as total FROM leads ${whereClause}`;
-    const countResult = await database.query(countSql);
+    const countResult = await database.query(countSql, params.slice());
     const total = Array.isArray(countResult) ? countResult[0].total : countResult.recordset[0].total;
 
     // Query leads with assessment count using correct column names (lead_id not lead_user_id)
+    params.push(offset, parseInt(limit));
     const sql = `
       SELECT 
         l.id,
@@ -281,10 +284,10 @@ router.get('/users', authenticateAdmin, async (req, res) => {
       ${whereClause}
       GROUP BY l.id, l.contact_name, l.email, l.company_name, l.company_size, l.country, l.industry, l.job_title, l.phone_number, l.created_at, l.last_login_at
       ORDER BY l.created_at DESC
-      OFFSET ${offset} ROWS FETCH NEXT ${parseInt(limit)} ROWS ONLY;
+      OFFSET ? ROWS FETCH NEXT ? ROWS ONLY;
     `;
 
-    const result = await database.query(sql);
+    const result = await database.query(sql, params);
     const users = Array.isArray(result) ? result : result.recordset;
 
     await Admin.logActivity(req.admin.id, 'VIEW', 'users', null, 'Viewed user list', req.ip, req.headers['user-agent']);
@@ -386,38 +389,41 @@ router.get('/questions', authenticateAdmin, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let whereConditions = [];
+    const params = [];
 
     if (assessment_type && assessment_type !== 'all') {
-      const escapedType = assessment_type.toUpperCase().replace(/'/g, "''");
-      whereConditions.push(`assessment_type = '${escapedType}'`);
+      whereConditions.push(`assessment_type = ?`);
+      params.push(assessment_type.toUpperCase());
     }
 
     if (pillar_name && pillar_name !== 'all') {
-      const escapedPillar = pillar_name.replace(/'/g, "''");
-      whereConditions.push(`pillar_name = '${escapedPillar}'`);
+      whereConditions.push(`pillar_name = ?`);
+      params.push(pillar_name);
     }
 
     if (is_active !== undefined && is_active !== null && is_active !== '') {
-      whereConditions.push(`is_active = ${is_active === 'true' || is_active === '1' ? 1 : 0}`);
+      whereConditions.push(`is_active = ?`);
+      params.push(is_active === 'true' || is_active === '1' ? 1 : 0);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     // Get total count
     const countSql = `SELECT COUNT(*) as total FROM assessment_questions ${whereClause}`;
-    const countResult = await database.query(countSql);
+    const countResult = await database.query(countSql, params.slice());
     const total = Array.isArray(countResult) ? countResult[0].total : countResult.recordset[0].total;
 
+    params.push(offset, parseInt(limit));
     const sql = `
       SELECT id, assessment_type, pillar_name, pillar_short_name, 
              question_text, question_order, is_active, created_at
       FROM assessment_questions
       ${whereClause}
       ORDER BY assessment_type, pillar_name, question_order
-      OFFSET ${offset} ROWS FETCH NEXT ${parseInt(limit)} ROWS ONLY
+      OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `;
 
-    const result = await database.query(sql);
+    const result = await database.query(sql, params);
     const questions = Array.isArray(result) ? result : result.recordset;
 
     console.log(`✅ Loaded ${questions.length} questions (Total: ${total})`);
@@ -890,23 +896,31 @@ router.get('/activity-logs/detailed', authenticateAdmin, async (req, res) => {
     const { limit = 50, page = 1, action_type, entity_type } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    // Build WHERE clause for admin logs
-    let adminWhereClause = '1=1';
-    let userWhereClause = '1=1';
+    // Build WHERE clause with parameterized queries
+    let adminWhereConditions = ['1=1'];
+    let userWhereConditions = ['1=1'];
+    const adminParams = [];
+    const userParams = [];
     
     if (action_type && action_type !== 'all') {
-      const escapedAction = action_type.replace(/'/g, "''");
-      adminWhereClause += ` AND aal.action_type = '${escapedAction}'`;
-      userWhereClause += ` AND ual.action_type = '${escapedAction}'`;
+      adminWhereConditions.push(`aal.action_type = ?`);
+      userWhereConditions.push(`ual.action_type = ?`);
+      adminParams.push(action_type);
+      userParams.push(action_type);
     }
     
     if (entity_type && entity_type !== 'all') {
-      const escapedEntity = entity_type.replace(/'/g, "''");
-      adminWhereClause += ` AND aal.entity_type = '${escapedEntity}'`;
-      userWhereClause += ` AND ual.entity_type = '${escapedEntity}'`;
+      adminWhereConditions.push(`aal.entity_type = ?`);
+      userWhereConditions.push(`ual.entity_type = ?`);
+      adminParams.push(entity_type);
+      userParams.push(entity_type);
     }
     
+    const adminWhereClause = adminWhereConditions.join(' AND ');
+    const userWhereClause = userWhereConditions.join(' AND ');
+    
     // Get combined logs from both admin and user activity tables
+    const allParams = [...adminParams, ...userParams, offset, parseInt(limit)];
     const sql = `
       WITH CombinedLogs AS (
         SELECT
@@ -950,13 +964,14 @@ router.get('/activity-logs/detailed', authenticateAdmin, async (req, res) => {
       SELECT *
       FROM CombinedLogs
       ORDER BY created_at DESC
-      OFFSET ${offset} ROWS FETCH NEXT ${parseInt(limit)} ROWS ONLY
+      OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `;
     
-    const result = await database.query(sql);
+    const result = await database.query(sql, allParams);
     const logs = Array.isArray(result) ? result : result.recordset;
     
     // Get total count
+    const countParams = [...adminParams, ...userParams];
     const countSql = `
       SELECT COUNT(*) as total FROM (
         SELECT id FROM dbo.admin_activity_log aal WHERE ${adminWhereClause}
@@ -964,7 +979,7 @@ router.get('/activity-logs/detailed', authenticateAdmin, async (req, res) => {
         SELECT id FROM dbo.user_activity_log ual WHERE ${userWhereClause}
       ) combined
     `;
-    const countResult = await database.query(countSql);
+    const countResult = await database.query(countSql, countParams);
     const total = Array.isArray(countResult) ? countResult[0].total : countResult.recordset[0].total;
     
     console.log(`✅ Found ${logs.length} activity logs (Total: ${total})`);
@@ -1840,24 +1855,29 @@ router.get('/assessments', authenticateAdmin, async (req, res) => {
     const { page = 1, limit = 20, assessment_type, lead_id } = req.query;
     const offset = (page - 1) * limit;
 
-    // Build WHERE clause
-    let whereClause = 'WHERE 1=1';
+    // Build WHERE clause with parameterized queries
+    let whereConditions = ['1=1'];
+    const params = [];
 
     if (assessment_type && assessment_type !== 'all') {
-      const escapedType = assessment_type.toUpperCase().replace(/'/g, "''");
-      whereClause += ` AND a.assessment_type = '${escapedType}'`;
+      whereConditions.push(`a.assessment_type = ?`);
+      params.push(assessment_type.toUpperCase());
     }
 
     if (lead_id) {
-      whereClause += ` AND a.lead_id = ${parseInt(lead_id)}`;
+      whereConditions.push(`a.lead_id = ?`);
+      params.push(parseInt(lead_id));
     }
+
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
 
     // Get total count
     const countSql = `SELECT COUNT(*) as total FROM assessments a ${whereClause}`;
-    const countResult = await database.query(countSql);
+    const countResult = await database.query(countSql, params.slice());
     const total = Array.isArray(countResult) ? countResult[0].total : countResult.recordset[0].total;
 
     // Get assessments with dimension_scores
+    params.push(offset, parseInt(limit));
     const sql = `
       SELECT 
         a.id,
@@ -1876,10 +1896,10 @@ router.get('/assessments', authenticateAdmin, async (req, res) => {
       LEFT JOIN leads l ON a.lead_id = l.id
       ${whereClause}
       ORDER BY a.completed_at DESC
-      OFFSET ${offset} ROWS FETCH NEXT ${parseInt(limit)} ROWS ONLY
+      OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `;
 
-    const result = await database.query(sql);
+    const result = await database.query(sql, params);
     const assessments = Array.isArray(result) ? result : result.recordset;
 
     res.json({
