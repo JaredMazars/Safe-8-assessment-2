@@ -356,9 +356,9 @@ const AssessmentResults = ({
     };
   };
 
-  const getBenchmarkComparison = () => {
-    return 'Industry benchmark data will be available soon';
-  };
+  // const getBenchmarkComparison = () => {
+  //   return 'Industry benchmark data will be available soon';
+  // };
 
   const overallStatus = getOverallStatus();
   const benchmarkComparison = getBenchmarkComparison();
