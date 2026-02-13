@@ -1579,8 +1579,8 @@ router.post('/users', authenticateAdmin, async (req, res) => {
         password += allChars[crypto.randomInt(0, allChars.length)];
       }
       
-      // Shuffle the password
-      return password.split('').sort(() => Math.random() - 0.5).join('');
+      // Shuffle the password using cryptographically secure random
+      return password.split('').sort(() => crypto.randomInt(-1, 2)).join('');
     };
     
     const tempPassword = generateTempPassword();
