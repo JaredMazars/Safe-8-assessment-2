@@ -204,17 +204,22 @@ GO
 -- ============================================
 
 -- Admin Users
-SET IDENTITY_INSERT [admin_users] ON;
-INSERT INTO [admin_users] ([id], [username], [email], [password_hash], [full_name], [role], [is_active], [created_at], [updated_at])
-VALUES 
-(1, N'superadmin', N'superadmin@forvismazars.com', N'$2b$10$XQJ3q8GQ8xqH9xY3x4x4x.xJ3q8GQ8xqH9xY3x4x4x.xJ3q8GQ8xqH', N'Super Administrator', N'super_admin', 1, GETDATE(), GETDATE()),
-(2, N'jared', N'jared.moodley@mazars.co.za', N'$2b$10$XQJ3q8GQ8xqH9xY3x4x4x.xJ3q8GQ8xqH9xY3x4x4x.xJ3q8GQ8xqH', N'Jared Moodley', N'super_admin', 1, GETDATE(), GETDATE()),
-(3, N'admin', N'admin@forvismazars.com', N'$2b$10$m8xQz2xXj5rK3vL6vL6vLOxK3vL6vL6vL6vL6vL6vL6vL6vL6vL6u', N'System Administrator', N'admin', 1, GETDATE(), GETDATE());
-SET IDENTITY_INSERT [admin_users] OFF;
-GO
-
--- NOTE: Password for all admin accounts is: Admin123!
--- The hash shown here is just a placeholder - you'll need to generate proper bcrypt hashes
+-- NOTE: DO NOT insert admin users with hardcoded passwords in SQL scripts!
+-- Use the admin creation API endpoint or server scripts to create admin accounts.
+-- This ensures proper password hashing and security logging.
+--
+-- To create an admin user:
+-- 1. Run: node server/create_admin.js
+-- 2. Or use the API: POST /api/admin/admins (requires super admin authentication)
+--
+-- Example admin creation script (create_admin.js):
+-- const Admin = require('./models/Admin');
+-- await Admin.create({ 
+--   username: 'superadmin', 
+--   email: 'admin@example.com', 
+--   password: 'SecurePassword123!',
+--   role: 'super_admin' 
+-- });
 
 -- Pillars
 SET IDENTITY_INSERT [pillars] ON;

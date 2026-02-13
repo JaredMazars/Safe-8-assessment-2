@@ -134,17 +134,41 @@ JWT_SECRET=your-jwt-secret-key-here-should-be-long-and-random
 ## 📊 Test User Accounts
 
 ### User Account (Example)
-You can create test users through the admin portal or directly in the database:
+Create test users through the admin portal (recommended) or use the API:
 
-```sql
-INSERT INTO leads (contact_name, email, password_hash, company_name, industry, is_email_verified)
-VALUES (
-  'Test User',
-  'test@example.com',
-  '$2b$10$m8xQz2xXj5rK3vL6vL6vLOxK3vL6vL6vL6vL6vL6vL6vL6vL6vL6u', -- Password: Test123!
-  'Test Company',
-  'Technology',
-  1
+**Option 1: Admin Portal**
+1. Login to admin dashboard
+2. Navigate to Users → Add User
+3. Enter user details and generate secure password
+
+**Option 2: API Endpoint**
+```bash
+# Use the admin API to create users (requires authentication)
+curl -X POST http://localhost:5001/api/admin/users \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contact_name": "Test User",
+    "email": "test@example.com",
+    "company_name": "Test Company",
+    "industry": "Technology"
+  }'
+# Password will be auto-generated and sent via email
+```
+
+**Option 3: Server Script**
+```javascript
+// server/create_test_user.js
+const bcrypt = require('bcrypt');
+const database = require('./config/database');
+
+const password = 'YourSecurePassword123!';
+const hash = await bcrypt.hash(password, 12);
+
+await database.query(
+  `INSERT INTO leads (contact_name, email, password_hash, company_name, industry, is_email_verified)
+   VALUES (?, ?, ?, ?, ?, 1)`,
+  ['Test User', 'test@example.com', hash, 'Test Company', 'Technology']
 );
 ```
 
@@ -230,17 +254,39 @@ npm run dev
    ```
 
 ### Password Reset for Admin
-If you forget admin password, reset it in the database:
+If you forget admin password, use the password reset script:
 
-```sql
--- Password: Admin123!
-UPDATE admin_users 
-SET password_hash = '$2b$10$m8xQz2xXj5rK3vL6vL6vLOxK3vL6vL6vL6vL6vL6vL6vL6vL6vL6u',
-    must_change_password = 0,
-    login_attempts = 0,
-    locked_until = NULL
-WHERE username = 'admin';
+**Option 1: Use Reset Script (Recommended)**
+```bash
+# Run the password reset script
+node server/reset_admin_password.js
 ```
+
+**Option 2: Manual Reset with Node.js**
+```javascript
+// reset_password.js
+const bcrypt = require('bcrypt');
+const sql = require('mssql');
+
+const newPassword = 'YourNewSecurePassword123!';
+const hash = await bcrypt.hash(newPassword, 12);
+
+const pool = await sql.connect(dbConfig);
+await pool.request()
+  .input('hash', sql.NVarChar, hash)
+  .query(`
+    UPDATE admin_users 
+    SET password_hash = @hash,
+        must_change_password = 1,
+        login_attempts = 0,
+        locked_until = NULL
+    WHERE username = 'admin'
+  `);
+
+console.log('Password reset successfully!');
+```
+
+**⚠️ SECURITY WARNING**: Never use SQL UPDATE statements with hardcoded password hashes in documentation or scripts that could be committed to version control!
 
 ### Email Not Sending
 1. Check Gmail settings allow "Less secure app access" or use App Password
