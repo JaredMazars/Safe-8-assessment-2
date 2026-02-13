@@ -57,7 +57,7 @@ assessmentRouter.get('/current/:userId/:assessmentType', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get current assessment',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
