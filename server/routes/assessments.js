@@ -276,9 +276,9 @@ assessmentRouter.get('/user/:userId/summary', cacheMiddleware(300), async (req, 
         COUNT(CASE WHEN overall_score >= 60 AND overall_score < 80 THEN 1 END) as good_scores,
         COUNT(CASE WHEN overall_score < 60 THEN 1 END) as needs_improvement_scores
       FROM assessments 
-      WHERE lead_id = ${parseInt(userId)}`;
+      WHERE lead_id = ?`;
     
-    const result = await database.query(query);
+    const result = await database.query(query, [parseInt(userId)]);
     console.log('📊 Query result structure:', result);
     
     // Handle different result structures from database query function
@@ -357,9 +357,9 @@ assessmentRouter.get('/:assessmentId', cacheMiddleware(300), async (req, res) =>
         l.email
       FROM assessments a
       LEFT JOIN leads l ON a.lead_id = l.id
-      WHERE a.id = ${parseInt(assessmentId)}`;
+      WHERE a.id = ?`;
 
-    const result = await database.query(query);
+    const result = await database.query(query, [parseInt(assessmentId)]);
 
     // Handle different result structures
     let assessmentData;

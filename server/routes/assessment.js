@@ -9,7 +9,7 @@ assessmentRouter.get('/current/:userId/:assessmentType', async (req, res) => {
     const { userId, assessmentType } = req.params;
     console.log(`🔍 Getting current assessment for user ${userId}, type ${assessmentType}`);
     
-    // Get the most recent assessment for this user and type
+    // Get the most recent assessment for this user and type (using parameterized query to prevent SQL injection)
     const query = `
       SELECT TOP 1 
         a.*,
@@ -19,12 +19,12 @@ assessmentRouter.get('/current/:userId/:assessmentType', async (req, res) => {
         l.industry
       FROM assessments a
       LEFT JOIN leads l ON a.lead_id = l.id
-      WHERE a.lead_id = ${userId} 
-        AND UPPER(a.assessment_type) = '${assessmentType.toUpperCase()}'
+      WHERE a.lead_id = ? 
+        AND UPPER(a.assessment_type) = ?
       ORDER BY a.completed_at DESC
     `;
     
-    const result = await database.query(query);
+    const result = await database.query(query, [parseInt(userId), assessmentType.toUpperCase()]);
     
     if (result.length > 0) {
       const assessment = result[0];
