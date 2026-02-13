@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import logger from '../utils/logger.js';
 
 /**
@@ -39,7 +40,7 @@ class QueueService {
   async add(queueName, data, options = {}) {
     const queue = this.getQueue(queueName);
     const job = {
-      id: `${queueName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${queueName}-${Date.now()}-${crypto.randomBytes(6).toString('base64url')}`,
       data,
       options,
       attempts: 0,
