@@ -101,7 +101,8 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: [
         "'self'",
-        // Allow API calls to same origin
+        // Production: Use HTTPS only
+        // Development: Allow HTTP for localhost development servers (safe - traffic never leaves machine)
         process.env.NODE_ENV === 'production' 
           ? 'https://safe-8-assessment-d8cdftfveefggkgu.canadacentral-01.azurewebsites.net'
           : 'http://localhost:*'
