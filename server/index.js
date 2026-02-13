@@ -185,7 +185,21 @@ app.use(cookieParser());
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
     if (req.header('x-forwarded-proto') !== 'https') {
-      res.redirect(`https://${req.header('host')}${req.url}`);
+      // Prevent open redirect vulnerability - validate host against allowed domains
+      const host = req.header('host');
+      const allowedHosts = [
+        'safe-8-asessment.azurewebsites.net',
+        'safe-8-assessment-d8cdftfveefggkgu.canadacentral-01.azurewebsites.net'
+      ];
+      
+      // Only redirect if host is in allowlist
+      if (allowedHosts.includes(host)) {
+        // Use relative path to prevent absolute URL manipulation
+        res.redirect(301, `https://${host}${req.url}`);
+      } else {
+        // Reject requests with suspicious hosts
+        return res.status(400).send('Invalid host');
+      }
     } else {
       next();
     }
