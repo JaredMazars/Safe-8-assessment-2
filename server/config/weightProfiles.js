@@ -37,7 +37,7 @@ export function normalizeWeights(weights) {
   const newTotal = Object.values(normalized).reduce((sum, weight) => sum + weight, 0);
   if (newTotal !== 100) {
     const largestKey = Object.keys(normalized).reduce((a, b) => 
-      normalized[a] > normalized[b] ? a : b
+      normalized[a] > normalized[b] ? a : b, Object.keys(normalized)[0]
     );
     normalized[largestKey] += 100 - newTotal;
     normalized[largestKey] = parseFloat(normalized[largestKey].toFixed(2));
