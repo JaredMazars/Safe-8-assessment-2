@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAFE-8 Assessment Platform - Technical Documentation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            font-size: 32px;
+            margin-top: 30px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #95a5a6;
+            padding-bottom: 8px;
+            margin-top: 25px;
+            font-size: 24px;
+        }
+        h3 {
+            color: #2c3e50;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .code-block {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        .toc {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        .toc a {
+            color: #2980b9;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .highlight {
+            background-color: #ffffcc;
+            padding: 2px 5px;
+        }
+        .folder-structure {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        @media print {
+            body {
+                font-size: 11pt;
+            }
+            .code-block {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>SAFE-8 Assessment Platform - Technical Documentation</h1>
+
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+        <li><a href="#overview">1. Project Overview</a></li>
+        <li><a href="#architecture">2. Architecture</a></li>
+        <li><a href="#folder-structure">3. Folder Structure</a></li>
+        <li><a href="#routing">4. Routing System</a></li>
+        <li><a href="#database">5. Database Configuration</a></li>
+        <li><a href="#security">6. Security Implementation</a></li>
+        <li><a href="#frontend">7. Frontend Components</a></li>
+        <li><a href="#api-endpoints">8. API Endpoints</a></li>
+        <li><a href="#middleware">9. Middleware</a></li>
+        <li><a href="#deployment">10. Deployment</a></li>
+    </ul>
+</div>
+
+<div class="section" id="overview">
+    <h2>1. Project Overview</h2>
+    <p>SAFE-8 is a full-stack web application for conducting security and compliance assessments. The platform provides:</p>
+    <ul>
+        <li>Multiple assessment types (SAFE-8, ITAC, CMMC)</li>
+        <li>User registration and authentication</li>
+        <li>Admin dashboard for managing assessments</li>
+        <li>PDF report generation</li>
+        <li>Email notifications</li>
+        <li>Real-time assessment scoring</li>
+    </ul>
+    
+    <h3>Technology Stack:</h3>
+    <ul>
+        <li><strong>Frontend:</strong> React 19.2.0 with Vite</li>
+        <li><strong>Backend:</strong> Node.js with Express</li>
+        <li><strong>Database:</strong> Microsoft SQL Server</li>
+        <li><strong>Deployment:</strong> Azure App Service</li>
+    </ul>
+</div>
+
+<div class="section" id="architecture">
+    <h2>2. Architecture</h2>
+    <p>The application follows a three-tier architecture:</p>
+    
+    <div class="code-block">
+Client (React + Vite)
+    |
+    | HTTP/HTTPS
+    |
+API Server (Express.js)
+    |
+    | SQL Queries
+    |
+Database (MS SQL Server)
+    </div>
+    
+    <h3>Key Features:</h3>
+    <ul>
+        <li>RESTful API design</li>
+        <li>Session-based authentication</li>
+        <li>CSRF protection</li>
+        <li>Rate limiting</li>
+        <li>Caching layer (Redis/in-memory)</li>
+        <li>PDF generation service</li>
+        <li>Email service integration</li>
+    </ul>
+</div>
+
+<div class="section" id="folder-structure">
+    <h2>3. Folder Structure</h2>
+    
+    <h3>Root Level Structure</h3>
+    <div class="folder-structure">
+Safe-8-assessment-main/
+|
+|-- server/                    # Backend API server
+|   |-- config/               # Configuration files
+|   |-- controllers/          # Business logic
+|   |-- middleware/           # Express middleware
+|   |-- models/              # Database models
+|   |-- routes/              # API route definitions
+|   |-- services/            # External services (email, PDF)
+|   |-- utils/               # Utility functions
+|   |-- index.js             # Server entry point
+|   |-- package.json         # Server dependencies
+|
+|-- src/                      # Frontend React application
+|   |-- components/          # React components
+|   |-- services/            # API client services
+|   |-- config/              # Frontend configuration
+|   |-- assets/              # Images, fonts, etc.
+|   |-- App.jsx              # Main application component
+|   |-- main.jsx             # Application entry point
+|
+|-- database_backup/          # Database scripts and backup
+|-- cypress/                  # End-to-end tests
+|-- public/                   # Static assets
+|-- package.json             # Root dependencies
+|-- vite.config.js           # Vite build configuration
+|-- web.config               # IIS/Azure configuration
+    </div>
+    
+    <h3>Server Folder Breakdown</h3>
+    <div class="folder-structure">
+server/
+|-- config/
+|   |-- database.js          # Database connection pool
+|   |-- redis.js             # Redis cache configuration
+|   |-- simpleCache.js       # In-memory cache fallback
+|   |-- constants.js         # Application constants
+|   |-- weightProfiles.js    # Assessment scoring weights
+|
+|-- controllers/
+|   |-- assessmentController.js  # Assessment business logic
+|   |-- leadController.js        # Lead management logic
+|
+|-- middleware/
+|   |-- csrf.js              # CSRF token protection
+|   |-- errorHandler.js      # Global error handling
+|   |-- validation.js        # Input validation rules
+|
+|-- models/
+|   |-- Admin.js             # Admin user model
+|   |-- Assessment.js        # Assessment data model
+|   |-- Lead.js              # Lead/user model
+|   |-- Response.js          # Assessment response model
+|   |-- UserActivity.js      # Activity logging model
+|
+|-- routes/
+|   |-- admin.js             # Admin endpoints
+|   |-- assessment.js        # Single assessment operations
+|   |-- assessments.js       # Bulk assessment operations
+|   |-- lead.js              # User registration/login
+|   |-- response.js          # Response handling
+|
+|-- services/
+|   |-- emailService.js      # Email notifications
+|   |-- pdfService.js        # PDF generation
+|   |-- queueService.js      # Background job processing
+    </div>
+    
+    <h3>Frontend Folder Breakdown</h3>
+    <div class="folder-structure">
+src/
+|-- components/
+|   |-- WelcomeScreen.jsx       # Landing page
+|   |-- LeadForm.jsx            # User registration
+|   |-- AssessmentQuestions.jsx # Assessment interface
+|   |-- AssessmentResults.jsx   # Results display
+|   |-- AdminLogin.jsx          # Admin authentication
+|   |-- AdminDashboard.jsx      # Admin panel
+|   |-- UserDashboard.jsx       # User dashboard
+|
+|-- services/
+|   |-- api.js                  # Axios API client
+|
+|-- config/
+|   |-- questions.js            # Assessment questions data
+    </div>
+</div>
+
+<div class="section" id="routing">
+    <h2>4. Routing System</h2>
+    
+    <h3>Backend API Routes</h3>
+    <p>The server uses Express Router to organize endpoints. Here's the main routing configuration:</p>
+    
+    <p><strong>File: server/index.js (Lines 250-350)</strong></p>
+    <div class="code-block">
+import responseRouter from './routes/response.js';
+import leadRouter from './routes/lead.js';
+import assessmentResponseRouter from './routes/assessmentResponse.js';
+import userEngagementRouter from './routes/userEngagement.js';
+import assessmentRouter from './routes/assessments.js';
+import singleAssessmentRouter from './routes/assessment.js';
+import adminRouter from './routes/admin.js';
+
+// CSRF token generation endpoint
+app.get('/api/csrf-token', generateToken, (req, res) => {
+  res.json({ 
+    success: true,
+    csrfToken: req.csrfToken() 
+  });
+});
+
+// Mount routers with rate limiting
+app.use('/api/admin', authLimiter, adminRouter);
+app.use('/api/response', doubleCsrfProtection, responseRouter);
+app.use('/api/lead', leadRouter);
+app.use('/api/assessment-response', doubleCsrfProtection, assessmentResponseRouter);
+app.use('/api/user-engagement', userEngagementRouter);
+app.use('/api/assessments', assessmentRouter);
+app.use('/api/assessment', singleAssessmentRouter);
+    </div>
+    
+    <div class="note">
+        <strong>Key Points:</strong>
+        <ul>
+            <li>Each route module handles a specific domain (admin, lead, assessment)</li>
+            <li>Rate limiting applied to authentication endpoints</li>
+            <li>CSRF protection on sensitive operations</li>
+            <li>Modular structure for maintainability</li>
+        </ul>
+    </div>
+    
+    <h3>Frontend Routes</h3>
+    <p><strong>File: src/App.jsx (Lines 100-150)</strong></p>
+    <div class="code-block">
+import { Routes, Route, Navigate } from 'react-router-dom'
+
+function App() {
+  return (
+    &lt;Routes&gt;
+      {/* Public Routes */}
+      &lt;Route path="/" element={&lt;WelcomeScreen /&gt;} /&gt;
+      &lt;Route path="/lead-form" element={&lt;LeadForm /&gt;} /&gt;
+      &lt;Route path="/assessment" element={&lt;AssessmentQuestions /&gt;} /&gt;
+      &lt;Route path="/results" element={&lt;AssessmentResults /&gt;} /&gt;
+      
+      {/* User Routes */}
+      &lt;Route path="/dashboard" element={&lt;UserDashboard /&gt;} /&gt;
+      
+      {/* Admin Routes */}
+      &lt;Route path="/admin" element={&lt;AdminLogin /&gt;} /&gt;
+      &lt;Route path="/admin/dashboard" element={&lt;AdminDashboard /&gt;} /&gt;
+      &lt;Route path="/admin/change-password" element={&lt;ChangePassword /&gt;} /&gt;
+      
+      {/* Fallback */}
+      &lt;Route path="*" element={&lt;Navigate to="/" replace /&gt;} /&gt;
+    &lt;/Routes&gt;
+  )
+}
+    </div>
+    
+    <p><strong>Navigation Flow:</strong></p>
+    <ol>
+        <li>User lands on WelcomeScreen</li>
+        <li>Selects assessment type</li>
+        <li>Completes LeadForm (registration)</li>
+        <li>Proceeds to AssessmentQuestions</li>
+        <li>Views AssessmentResults</li>
+        <li>Can access UserDashboard for history</li>
+    </ol>
+</div>
+
+<div class="section" id="database">
+    <h2>5. Database Configuration</h2>
+    
+    <h3>Connection Pool Setup</h3>
+    <p><strong>File: server/config/database.js</strong></p>
+    <div class="code-block">
+import sql from 'mssql';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const config = {
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  port: parseInt(process.env.DB_PORT || '1433'),
+  options: {
+    encrypt: process.env.DB_ENCRYPT === 'yes',
+    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'yes',
+    enableArithAbort: true,
+    connectTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '60') * 1000,
+    requestTimeout: parseInt(process.env.DB_REQUEST_TIMEOUT || '60000'),
+  },
+  pool: {
+    max: parseInt(process.env.DB_POOL_MAX || '10'),
+    min: parseInt(process.env.DB_POOL_MIN || '0'),
+    idleTimeoutMillis: 30000,
+    acquireTimeoutMillis: 60000
+  }
+};
+
+// Add authentication
+if (process.env.DB_INTEGRATED_SECURITY === 'true') {
+  config.options.trustedConnection = true;
+} else {
+  config.user = process.env.DB_USER;
+  config.password = process.env.DB_PASSWORD;
+}
+    </div>
+    
+    <p><strong>Configuration Features:</strong></p>
+    <ul>
+        <li>Connection pooling for performance</li>
+        <li>Configurable timeouts</li>
+        <li>Support for both SQL Auth and Windows Auth</li>
+        <li>Azure SQL encryption support</li>
+        <li>Environment-based configuration</li>
+    </ul>
+    
+    <h3>Database Schema</h3>
+    <table>
+        <tr>
+            <th>Table</th>
+            <th>Description</th>
+            <th>Key Fields</th>
+        </tr>
+        <tr>
+            <td>leads</td>
+            <td>User accounts</td>
+            <td>id, contact_name, email, password_hash, company_name, industry</td>
+        </tr>
+        <tr>
+            <td>assessments</td>
+            <td>Completed assessments</td>
+            <td>id, lead_id, assessment_type, overall_score, dimension_scores, responses</td>
+        </tr>
+        <tr>
+            <td>admins</td>
+            <td>Administrative users</td>
+            <td>id, username, password_hash, role, session_token</td>
+        </tr>
+        <tr>
+            <td>user_activity_log</td>
+            <td>Audit trail</td>
+            <td>id, user_id, action_type, ip_address, timestamp</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section" id="security">
+    <h2>6. Security Implementation</h2>
+    
+    <h3>CSRF Protection</h3>
+    <p><strong>File: server/middleware/csrf.js</strong></p>
+    <div class="code-block">
+import { doubleCsrf } from 'csrf-csrf';
+import cookieParser from 'cookie-parser';
+
+const {
+  generateToken,
+  doubleCsrfProtection,
+} = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET,
+  cookieName: '__Host-csrf',
+  cookieOptions: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'strict',
+    path: '/'
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS']
+});
+
+export { generateToken, doubleCsrfProtection, cookieParser };
+    </div>
+    
+    <h3>Rate Limiting</h3>
+    <p><strong>File: server/index.js (Lines 40-75)</strong></p>
+    <div class="code-block">
+import rateLimit from 'express-rate-limit';
+
+// Authentication endpoints - 30 requests per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: 'Too many login attempts, please try again after 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    return ip.split(':').pop();
+  }
+});
+
+// General API endpoints - 100 requests per 15 minutes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+    </div>
+    
+    <h3>Input Validation</h3>
+    <p><strong>File: server/middleware/validation.js</strong></p>
+    <div class="code-block">
+import { body, validationResult } from 'express-validator';
+
+export const validateLeadForm = [
+  body('contactName')
+    .trim()
+    .notEmpty().withMessage('Contact name is required')
+    .isLength({ min: 2, max: 200 }),
+  
+  body('email')
+    .trim()
+    .notEmpty()
+    .isEmail().withMessage('Invalid email format')
+    .normalizeEmail(),
+  
+  body('companyName')
+    .trim()
+    .notEmpty()
+    .isLength({ min: 2, max: 200 }),
+  
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain uppercase, lowercase, and number'),
+  
+  handleValidationErrors
+];
+    </div>
+    
+    <h3>Authentication Middleware</h3>
+    <p><strong>File: server/routes/admin.js (Lines 60-90)</strong></p>
+    <div class="code-block">
+const authenticateAdmin = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authentication token provided'
+      });
+    }
+
+    const session = await Admin.verifySession(token);
+    
+    if (!session.success) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired session'
+      });
+    }
+
+    req.admin = session.admin;
+    next();
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Authentication error'
+    });
+  }
+};
+    </div>
+</div>
+
+<div class="section" id="frontend">
+    <h2>7. Frontend Components</h2>
+    
+    <h3>Main Application Component</h3>
+    <p><strong>File: src/App.jsx</strong></p>
+    <div class="code-block">
+import { useState, useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
+import api from './services/api'
+
+function App() {
+  // State management with sessionStorage persistence
+  const [selectedAssessmentType, setSelectedAssessmentType] = useState(
+    () => sessionStorage.getItem('assessmentType') || null
+  )
+  
+  const [userData, setUserData] = useState(
+    () => {
+      const saved = sessionStorage.getItem('userData')
+      return saved ? JSON.parse(saved) : null
+    }
+  )
+  
+  const [assessmentResults, setAssessmentResults] = useState(
+    () => {
+      const saved = sessionStorage.getItem('assessmentResults')
+      return saved ? JSON.parse(saved) : null
+    }
+  )
+
+  // Persist state to sessionStorage
+  useEffect(() => {
+    if (selectedAssessmentType) {
+      sessionStorage.setItem('assessmentType', selectedAssessmentType)
+    }
+  }, [selectedAssessmentType])
+
+  // Load industries from API
+  useEffect(() => {
+    const loadIndustries = async () => {
+      try {
+        const response = await api.get('/api/industries')
+        setIndustries(response.data)
+      } catch (error) {
+        console.error('Error loading industries:', error)
+      }
+    }
+    loadIndustries()
+  }, [])
+
+  return (
+    &lt;Routes&gt;
+      {/* Routes defined here */}
+    &lt;/Routes&gt;
+  )
+}
+    </div>
+    
+    <p><strong>Key Features:</strong></p>
+    <ul>
+        <li>Centralized state management</li>
+        <li>Session persistence across page refreshes</li>
+        <li>API integration for dynamic data</li>
+        <li>React Router for navigation</li>
+    </ul>
+    
+    <h3>API Service Client</h3>
+    <p><strong>File: src/services/api.js</strong></p>
+    <div class="code-block">
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true
+});
+
+// Request interceptor for CSRF token
+api.interceptors.request.use(async (config) => {
+  if (['post', 'put', 'patch', 'delete'].includes(config.method)) {
+    const csrfResponse = await axios.get(
+      `${API_BASE_URL}/api/csrf-token`,
+      { withCredentials: true }
+    );
+    config.headers['x-csrf-token'] = csrfResponse.data.csrfToken;
+  }
+  return config;
+});
+
+export default api;
+    </div>
+</div>
+
+<div class="section" id="api-endpoints">
+    <h2>8. API Endpoints</h2>
+    
+    <h3>Lead Management Routes</h3>
+    <p><strong>File: server/routes/lead.js</strong></p>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+            <th>Auth Required</th>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/lead/create</td>
+            <td>Register new user</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/lead/login</td>
+            <td>User login</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/lead/logout</td>
+            <td>User logout</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/lead/forgot-password</td>
+            <td>Request password reset</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/lead/reset-password</td>
+            <td>Reset password with token</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/api/lead/:id</td>
+            <td>Get user details</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    
+    <h4>Example: Create Lead Endpoint</h4>
+    <div class="code-block">
+leadRouter.post('/create', async (req, res) => {
+  try {
+    const {
+      contactName,
+      email,
+      companyName,
+      password,
+      industry
+    } = req.body;
+
+    // Validate required fields
+    if (!contactName || !email || !companyName || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+
+    // Use updateOrCreate to handle duplicate emails
+    const result = await Lead.updateOrCreate({
+      contactName,
+      email,
+      companyName,
+      password,
+      industry
+    });
+    
+    if (result.success) {
+      // Send welcome email for new accounts
+      if (result.isNew) {
+        await sendWelcomeEmail({
+          contact_name: contactName,
+          email: email,
+          company_name: companyName
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        leadId: result.leadId,
+        isNew: result.isNew,
+        message: 'Lead created successfully'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create lead'
+    });
+  }
+});
+    </div>
+    
+    <h3>Assessment Routes</h3>
+    <p><strong>File: server/routes/assessment.js</strong></p>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+            <th>Auth Required</th>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/api/assessment/current/:userId/:type</td>
+            <td>Get latest assessment</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/assessment/submit</td>
+            <td>Submit assessment responses</td>
+            <td>Yes</td>
+        </tr>
+    </table>
+    
+    <h4>Example: Get Current Assessment</h4>
+    <div class="code-block">
+assessmentRouter.get('/current/:userId/:assessmentType', async (req, res) => {
+  try {
+    const { userId, assessmentType } = req.params;
+    
+    const query = `
+      SELECT TOP 1 
+        a.*,
+        l.contact_name,
+        l.email,
+        l.company_name,
+        l.industry
+      FROM assessments a
+      LEFT JOIN leads l ON a.lead_id = l.id
+      WHERE a.lead_id = ? 
+        AND UPPER(a.assessment_type) = ?
+      ORDER BY a.completed_at DESC
+    `;
+    
+    const result = await database.query(query, [
+      parseInt(userId), 
+      assessmentType.toUpperCase()
+    ]);
+    
+    if (result.length > 0) {
+      res.json({
+        success: true,
+        data: {
+          assessment_id: result[0].id,
+          overall_score: result[0].overall_score,
+          dimension_scores: JSON.parse(result[0].dimension_scores),
+          responses: JSON.parse(result[0].responses),
+          completed_at: result[0].completed_at
+        }
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get assessment'
+    });
+  }
+});
+    </div>
+    
+    <h3>Admin Routes</h3>
+    <p><strong>File: server/routes/admin.js</strong></p>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+            <th>Auth Required</th>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/admin/login</td>
+            <td>Admin login</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/admin/logout</td>
+            <td>Admin logout</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/api/admin/assessments</td>
+            <td>List all assessments</td>
+            <td>Yes (Admin)</td>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/api/admin/leads</td>
+            <td>List all leads</td>
+            <td>Yes (Admin)</td>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/api/admin/stats</td>
+            <td>Dashboard statistics</td>
+            <td>Yes (Admin)</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/api/admin/users/create</td>
+            <td>Create new admin</td>
+            <td>Yes (Super Admin)</td>
+        </tr>
+        <tr>
+            <td>DELETE</td>
+            <td>/api/admin/users/:id</td>
+            <td>Delete admin user</td>
+            <td>Yes (Super Admin)</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section" id="middleware">
+    <h2>9. Middleware</h2>
+    
+    <h3>Error Handler</h3>
+    <p><strong>File: server/middleware/errorHandler.js</strong></p>
+    <div class="code-block">
+export const errorHandler = (err, req, res, next) => {
+  console.error('Error:', err);
+
+  // SQL Server errors
+  if (err.code === 'ECONNREFUSED') {
+    return res.status(503).json({
+      success: false,
+      message: 'Database connection failed'
+    });
+  }
+
+  // Validation errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: err.errors
+    });
+  }
+
+  // Default error
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error'
+  });
+};
+    </div>
+    
+    <h3>CORS Configuration</h3>
+    <p><strong>File: server/index.js (Lines 150-180)</strong></p>
+    <div class="code-block">
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://safe-8-assessment.azurewebsites.net',
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      if (process.env.NODE_ENV === 'production') {
+        const requestHost = origin.replace(/^https?:\/\//, '');
+        const serverHost = process.env.WEBSITE_HOSTNAME;
+        if (requestHost === serverHost) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      } else {
+        callback(null, true);
+      }
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
+  credentials: true
+}));
+    </div>
+</div>
+
+<div class="section" id="deployment">
+    <h2>10. Deployment</h2>
+    
+    <h3>Environment Variables</h3>
+    <p><strong>Required Variables:</strong></p>
+    <div class="code-block">
+# Database Configuration
+DB_SERVER=your-server.database.windows.net
+DB_NAME=Safe8Assessment
+DB_USER=your-username
+DB_PASSWORD=your-password
+DB_ENCRYPT=yes
+DB_TRUST_SERVER_CERTIFICATE=no
+DB_PORT=1433
+
+# Application Settings
+PORT=8080
+NODE_ENV=production
+CORS_ORIGIN=https://your-domain.azurewebsites.net
+
+# Security
+CSRF_SECRET=your-random-secret-key
+JWT_SECRET=your-jwt-secret
+
+# Email Configuration
+EMAIL_HOST=smtp.office365.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@domain.com
+EMAIL_PASSWORD=your-password
+EMAIL_FROM=noreply@domain.com
+
+# Azure Settings
+WEBSITE_HOSTNAME=your-app.azurewebsites.net
+    </div>
+    
+    <h3>Build Scripts</h3>
+    <p><strong>package.json</strong></p>
+    <div class="code-block">
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "cd server && npm start",
+    "server:dev": "cd server && npm run dev"
+  }
+}
+    </div>
+    
+    <p><strong>server/package.json</strong></p>
+    <div class="code-block">
+{
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  }
+}
+    </div>
+    
+    <h3>Deployment Steps</h3>
+    <ol>
+        <li><strong>Install Dependencies:</strong>
+            <div class="code-block">npm install
+cd server
+npm install
+cd ..</div>
+        </li>
+        <li><strong>Build Frontend:</strong>
+            <div class="code-block">npm run build</div>
+        </li>
+        <li><strong>Configure Environment:</strong>
+            <ul>
+                <li>Set all environment variables in Azure App Service Configuration</li>
+                <li>Enable Application Insights for monitoring</li>
+            </ul>
+        </li>
+        <li><strong>Deploy to Azure:</strong>
+            <div class="code-block">az webapp up --name safe-8-assessment --resource-group YourResourceGroup</div>
+        </li>
+        <li><strong>Database Setup:</strong>
+            <ul>
+                <li>Run migration scripts from database_backup folder</li>
+                <li>Configure firewall rules for Azure SQL</li>
+                <li>Test connection from Azure App Service</li>
+            </ul>
+        </li>
+    </ol>
+</div>
+
+<div class="section">
+    <h2>Summary</h2>
+    <p>This technical documentation covers:</p>
+    <ul>
+        <li>Complete folder and file structure organization</li>
+        <li>Backend routing with Express.js</li>
+        <li>Frontend routing with React Router</li>
+        <li>Database configuration and connection pooling</li>
+        <li>Security implementations (CSRF, rate limiting, validation)</li>
+        <li>API endpoint specifications</li>
+        <li>Middleware architecture</li>
+        <li>Deployment configuration for Azure</li>
+    </ul>
+    
+    <h3>Key Architectural Decisions:</h3>
+    <ol>
+        <li><strong>Modular Structure:</strong> Separate concerns into routes, models, controllers, and services</li>
+        <li><strong>Security First:</strong> Multiple layers of protection (CSRF, rate limiting, input validation)</li>
+        <li><strong>Scalability:</strong> Connection pooling, caching, and async operations</li>
+        <li><strong>Maintainability:</strong> Clear folder structure, consistent naming, comprehensive error handling</li>
+        <li><strong>Cloud-Ready:</strong> Environment-based configuration, Azure-optimized settings</li>
+    </ol>
+    
+    <h3>Development Best Practices:</h3>
+    <ul>
+        <li>Always validate input on both client and server</li>
+        <li>Use parameterized queries to prevent SQL injection</li>
+        <li>Implement proper error handling and logging</li>
+        <li>Maintain session state for better user experience</li>
+        <li>Follow RESTful API conventions</li>
+        <li>Use middleware for cross-cutting concerns</li>
+        <li>Keep sensitive data in environment variables</li>
+        <li>Implement comprehensive testing (unit, integration, E2E)</li>
+    </ul>
+</div>
+
+<hr>
+<p><strong>Document Version:</strong> 1.0<br>
+<strong>Last Updated:</strong> February 16, 2026<br>
+<strong>Application Version:</strong> 1.0.0</p>
+
+</body>
+</html>

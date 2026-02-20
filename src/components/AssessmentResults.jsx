@@ -35,6 +35,7 @@ const AssessmentResults = ({
   const [error, setError] = useState(null);
   const [userAssessments, setUserAssessments] = useState([]);
   const [globalAverage, setGlobalAverage] = useState(77.9); // Default fallback
+  const [benchmarkData, setBenchmarkData] = useState(null);
   const { score } = results || { score: 0 };
 
   // Load dimension scores from assessment results
@@ -43,7 +44,26 @@ const AssessmentResults = ({
       try {
         setIsLoading(true);
         
-        // Load global average score for industry benchmark
+        // Load benchmark data for industry comparison
+        if (assessmentType && industry) {
+          try {
+            const benchmarkResponse = await api.get(`/api/assessment/benchmark/${assessmentType}/${industry}`);
+            console.log('📊 Benchmark API Response:', benchmarkResponse.data);
+            if (benchmarkResponse.data.success && benchmarkResponse.data.benchmark) {
+              console.log('✅ Setting benchmark data:', benchmarkResponse.data.benchmark);
+              setBenchmarkData(benchmarkResponse.data.benchmark);
+              
+              // Use global average from benchmark data if available
+              if (benchmarkResponse.data.benchmark.global_average) {
+                setGlobalAverage(benchmarkResponse.data.benchmark.global_average);
+              }
+            }
+          } catch (err) {
+            console.log('⚠️ Could not load benchmark data:', err.message);
+          }
+        }
+        
+        // Load global average score for industry benchmark (fallback)
         try {
           const avgResponse = await api.get('/api/assessment/global-average');
           console.log('🌍 Global Average API Response:', avgResponse.data);
@@ -356,9 +376,46 @@ const AssessmentResults = ({
     };
   };
 
-  // const getBenchmarkComparison = () => {
-  //   return 'Industry benchmark data will be available soon';
-  // };
+  const getBenchmarkComparison = () => {
+    if (!benchmarkData || !benchmarkData.total_assessments || benchmarkData.total_assessments === 0) {
+      return 'Industry benchmark data will be available as more assessments are completed';
+    }
+
+    const yourScore = Math.round(score);
+    const industryAvg = benchmarkData.industry_average || benchmarkData.global_average || globalAverage;
+    const difference = yourScore - industryAvg;
+    const percentDiff = Math.abs(Math.round((difference / industryAvg) * 100));
+    
+    let comparisonText = '';
+    let performanceLevel = '';
+    
+    if (difference > 10) {
+      performanceLevel = 'significantly above';
+      comparisonText = `Your score of ${yourScore}% is ${percentDiff}% higher than the ${industry !== 'all' ? industry : 'industry'} average of ${Math.round(industryAvg)}%. Excellent performance!`;
+    } else if (difference > 0) {
+      performanceLevel = 'above';
+      comparisonText = `Your score of ${yourScore}% is ${percentDiff}% above the ${industry !== 'all' ? industry : 'industry'} average of ${Math.round(industryAvg)}%. Good work!`;
+    } else if (difference > -10) {
+      performanceLevel = 'near';
+      comparisonText = `Your score of ${yourScore}% is close to the ${industry !== 'all' ? industry : 'industry'} average of ${Math.round(industryAvg)}%. There's room for improvement.`;
+    } else {
+      performanceLevel = 'below';
+      comparisonText = `Your score of ${yourScore}% is ${percentDiff}% below the ${industry !== 'all' ? industry : 'industry'} average of ${Math.round(industryAvg)}%. Consider focusing on gap areas.`;
+    }
+
+    // Add additional context if we have enough data
+    if (benchmarkData.total_assessments > 5) {
+      const dataContext = `Based on ${benchmarkData.total_assessments} ${assessmentType} assessments${industry !== 'all' ? ` in the ${industry} industry` : ''}.`;
+      comparisonText += ` ${dataContext}`;
+      
+      // Add best score context if available
+      if (benchmarkData.best_score && benchmarkData.best_score > industryAvg + 5) {
+        comparisonText += ` The top performer scored ${Math.round(benchmarkData.best_score)}%.`;
+      }
+    }
+
+    return comparisonText;
+  };
 
   const overallStatus = getOverallStatus();
   const benchmarkComparison = getBenchmarkComparison();
