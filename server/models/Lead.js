@@ -94,6 +94,10 @@ class Lead {
       };
     } catch (error) {
       console.error('❌ Error creating lead:', error.message);
+      // SQL Server unique constraint violation codes
+      if (error.number === 2627 || error.number === 2601) {
+        return { success: false, duplicate: true, error: 'Email already registered' };
+      }
       return { 
         success: false, 
         error: error.message 
@@ -142,14 +146,11 @@ class Lead {
       
       const sqlQuery = 'SELECT * FROM leads WHERE email = @email;';
       
-      console.log('🔍 Executing SELECT...');
       const result = await request.query(sqlQuery);
-      console.log('✅ SELECT success, rows:', result.recordset.length);
-      
       return result.recordset[0] || null;
     } catch (error) {
       console.error('❌ Error getting lead by email:', error.message);
-      return null;
+      throw error; // propagate so callers can handle properly
     }
   }
 

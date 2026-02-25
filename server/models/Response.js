@@ -81,14 +81,14 @@ class Response {
 
     static async getAll() {
     const sql = `
-        SELECT * 
+        SELECT id, question_text, assessment_type, pillar_short_name as pillar_name, question_order, is_active
         FROM assessment_questions 
-        ORDER BY assessment_type, pillar_name, question_order;
+        ORDER BY assessment_type, pillar_short_name, question_order;
     `;
 
     try {
         const result = await database.query(sql);
-        console.log('Raw DB result:', result); // ✅ Add this for debugging
+        console.log('✅ Questions loaded with SHORT pillar names');
         return result
     } catch (error) {
         console.error('Database query failed:', error.message);

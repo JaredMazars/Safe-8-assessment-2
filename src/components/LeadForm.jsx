@@ -207,8 +207,10 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
       }
     } catch (error) {
       console.error('Error submitting lead:', error);
-      if (error.response?.status === 400) {
-        setErrors({ submit: 'Email already registered. Please use a different email or try logging in.' });
+      if (error.response?.status === 409) {
+        setErrors({ email: 'This email is already registered. Please log in or use a different email.' });
+      } else if (error.response?.status === 400) {
+        setErrors({ submit: error.response?.data?.message || 'Please check your details and try again.' });
       } else {
         setErrors({ submit: 'Failed to submit form. Please try again.' });
       }

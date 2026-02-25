@@ -31,7 +31,8 @@ const AssessmentQuestions = ({
           const transformedQuestions = response.data.questions.map(q => ({
             id: q.id,
             text: q.question_text,
-            type: 'scale'
+            type: 'scale',
+            pillar_name: q.pillar_short_name || q.pillar_name || 'Unknown'
           }));
           console.log(`✅ Loaded ${transformedQuestions.length} questions from database`);
           setQuestions(transformedQuestions);
@@ -126,38 +127,44 @@ const AssessmentQuestions = ({
     
     // Generate dimension/pillar scores from responses
     const calculatePillarScores = () => {
-      // Group responses by pillar if available in questions data
-      // For now, create a simple breakdown
-      const pillars = ['Strategy', 'Architecture', 'Foundation', 'Ethics', 'Culture', 'Capability', 'Governance', 'Performance'];
-      const questionsPerPillar = Math.ceil(questions.length / 8);
+      // Group responses by actual pillar from question data
+      const pillarGroups = {};
       
-      return pillars.map((pillar, index) => {
-        const startIdx = index * questionsPerPillar;
-        const endIdx = Math.min(startIdx + questionsPerPillar, questions.length);
-        const pillarQuestions = questions.slice(startIdx, endIdx);
+      questions.forEach(q => {
+        const pillarName = q.pillar_name || 'Unknown'; // Already using short name from line 33
+        if (!pillarGroups[pillarName]) {
+          pillarGroups[pillarName] = {
+            questions: [],
+            total: 0,
+            count: 0
+          };
+        }
+        pillarGroups[pillarName].questions.push(q);
         
-        let pillarTotal = 0;
-        let pillarCount = 0;
-        
-        pillarQuestions.forEach(q => {
-          if (responses[q.id]) {
-            pillarTotal += parseInt(responses[q.id]);
-            pillarCount++;
-          }
-        });
-        
-        const pillarScore = pillarCount > 0 ? Math.round((pillarTotal / (pillarCount * 5)) * 100) : 0;
+        // Add response if answered
+        if (responses[q.id]) {
+          pillarGroups[pillarName].total += parseInt(responses[q.id]);
+          pillarGroups[pillarName].count++;
+        }
+      });
+      
+      // Calculate score for each pillar
+      return Object.keys(pillarGroups).map(pillarName => {
+        const group = pillarGroups[pillarName];
+        const pillarScore = group.count > 0 
+          ? Math.round((group.total / (group.count * 5)) * 100) 
+          : 0;
         
         return {
-          pillar_name: pillar,
-          dimension_name: pillar,
+          pillar_name: pillarName,
+          dimension_name: pillarName,
           score: pillarScore
         };
       });
     };
     
     const pillarScores = calculatePillarScores();
-    console.log('Pillar scores calculated:', pillarScores.length, 'pillars');
+    console.log('Pillar scores calculated:', pillarScores);
     
     const payload = {
       lead_id: userId,
@@ -197,7 +204,8 @@ const AssessmentQuestions = ({
           responses,
           score: finalScore,
           assessmentId: submitResponse.data.assessment_id,
-          completedAt: new Date().toISOString()
+          completedAt: new Date().toISOString(),
+          pillarScores: pillarScores  // Pass real pillar scores to results page
         };
         onComplete(results);
         // Navigate to results page
@@ -279,13 +287,11 @@ const AssessmentQuestions = ({
       <div className="assessment-wrapper">
         {/* Header */}
         <div className="assessment-header">
-          <button 
-            className="btn-back-home"
+          <button
+            className="btn-back-home btn-back-home--header"
             onClick={() => navigate('/')}
-            title="Return to Home"
           >
-            <i className="fas fa-arrow-left"></i>
-            Back to Home
+            <i className="fas fa-arrow-left"></i> Back to Home
           </button>
           <h1 className="assessment-title">SAFE-8 AI Readiness Assessment</h1>
           <p className="assessment-subtitle">{assessmentType.toUpperCase()} Level • {industry}</p>

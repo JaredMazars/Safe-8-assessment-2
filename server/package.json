@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "clear-cache": "node clearCache.js",
     "postinstall": "echo 'Server dependencies installed successfully'"
   },
   "keywords": [

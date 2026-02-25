@@ -257,11 +257,6 @@ function UserDashboard({ user, onLogout }) {
     <div className="dashboard-container">
       <div className="dashboard-wrapper">
         
-        {/* Back to Home Button */}
-        <button onClick={() => navigate('/')} className="btn-back-home" style={{ marginBottom: '20px' }}>
-          <i className="fas fa-arrow-left"></i> Back to Home
-        </button>
-        
         {/* Header */}
         <div className="dashboard-header">
           <div className="header-content">
@@ -270,6 +265,9 @@ function UserDashboard({ user, onLogout }) {
               <p className="dashboard-subtitle">Track your progress and view assessment history</p>
             </div>
             <div className="header-actions">
+              <button onClick={() => navigate('/')} className="btn-back-home btn-back-home--header">
+                <i className="fas fa-arrow-left"></i> Back to Home
+              </button>
               <button onClick={() => navigate('/')} className="btn-primary">
                 <i className="fas fa-plus"></i> New Assessment
               </button>

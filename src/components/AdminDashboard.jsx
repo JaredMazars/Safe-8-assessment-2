@@ -868,8 +868,8 @@ const AdminDashboard = () => {
               {/* <button onClick={() => setShowITACReviewForm(true)} className="btn-itac-review">
                 <i className="fas fa-file-contract"></i> ITAC Review
               </button> */}
-              <button onClick={() => navigate('/')} className="btn-back-home">
-                <i className="fas fa-home"></i> Back to Home
+              <button onClick={() => navigate('/')} className="btn-back-home" style={{ width: 'fit-content' }}>
+                <i className="fas fa-arrow-left"></i> Back to Home
               </button>
               <button onClick={handleLogout} className="btn-logout">
                 <i className="fas fa-sign-out-alt"></i> Logout

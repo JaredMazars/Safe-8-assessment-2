@@ -53,6 +53,13 @@ let pool = null;
 async function getPool() {
   if (!pool) {
     try {
+      // Close any existing connections first
+      try {
+        await sql.close();
+      } catch (closeErr) {
+        // Ignore close errors
+      }
+      
       pool = await sql.connect(config);
       logger.info('Database connection pool created successfully');
       
@@ -62,10 +69,30 @@ async function getPool() {
       });
     } catch (err) {
       logger.error('Database connection failed', { error: err.message });
+      pool = null;
       throw err;
     }
   }
   return pool;
+}
+
+// Force reset connection pool
+async function resetPool() {
+  logger.info('Resetting database connection pool...');
+  if (pool) {
+    try {
+      await pool.close();
+    } catch (err) {
+      logger.warn('Error closing pool', { error: err.message });
+    }
+  }
+  pool = null;
+  try {
+    await sql.close();
+  } catch (err) {
+    // Ignore
+  }
+  logger.info('Database pool reset complete');
 }
 
 const database = {
@@ -120,8 +147,10 @@ const database = {
     try {
       await getPool();
       logger.info('Database connection test successful');
+      return true;
     } catch (error) {
       logger.error('Database connection failed', { error: error.message });
+      return false;
     }
   },
 
@@ -131,7 +160,10 @@ const database = {
       pool = null;
       logger.info('Database connection pool closed');
     }
-  }
+  },
+
+  // Reset connection pool
+  resetPool
 };
 
 // ✅ Graceful shutdown

@@ -1848,7 +1848,7 @@ select.field-input {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 /* Assessment Header */
@@ -1860,35 +1860,9 @@ select.field-input {
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 48, 135, 0.15);
   position: relative;
-}
-
-.assessment-header .btn-back-home {
-  position: absolute;
-  top: 1.5rem;
-  left: 1.5rem;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: var(--white);
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.assessment-header .btn-back-home:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateX(-3px);
-}
-
-.assessment-header .btn-back-home i {
-  font-size: 1rem;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .assessment-title {
@@ -1896,6 +1870,8 @@ select.field-input {
   font-weight: 700;
   margin-bottom: 0.5rem;
   letter-spacing: -0.5px;
+  width: 100%;
+  text-align: center;
 }
 
 .assessment-subtitle {
@@ -1904,6 +1880,8 @@ select.field-input {
   opacity: 0.95;
   margin: 0;
   text-transform: capitalize;
+  width: 100%;
+  text-align: center;
 }
 
 /* Score Banner */
@@ -1925,11 +1903,13 @@ select.field-input {
   flex: 1;
 }
 
-.score-label {
+.score-banner .score-label {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--white);
+  color: var(--white) !important;
   margin: 0 0 0.25rem 0;
+  font-family: 'Montserrat', 'Proxima Nova', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  letter-spacing: -0.5px;
 }
 
 .score-description {
@@ -2260,13 +2240,6 @@ select.field-input {
     padding: 2rem 1.5rem;
   }
 
-  .assessment-header .btn-back-home {
-    top: 1rem;
-    left: 1rem;
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-  }
-
   .assessment-title {
     font-size: 1.75rem;
   }
@@ -2345,13 +2318,6 @@ select.field-input {
     padding: 1.5rem 1rem;
   }
 
-  .assessment-header .btn-back-home {
-    top: 0.75rem;
-    left: 0.75rem;
-    padding: 0.5rem 0.875rem;
-    font-size: 0.813rem;
-  }
-
   .assessment-title {
     font-size: 1.5rem;
   }
@@ -2422,6 +2388,9 @@ select.field-input {
   color: var(--white);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 48, 135, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .results-title {
@@ -2429,6 +2398,8 @@ select.field-input {
   font-weight: 700;
   margin-bottom: 0.5rem;
   letter-spacing: -0.5px;
+  width: 100%;
+  text-align: center;
 }
 
 .results-subtitle {
@@ -2436,6 +2407,8 @@ select.field-input {
   font-weight: 300;
   opacity: 0.95;
   margin-bottom: 1.5rem;
+  width: 100%;
+  text-align: center;
 }
 
 .results-meta {
@@ -2837,6 +2810,11 @@ select.field-input {
   border-color: #c7d2fe;
 }
 
+.service-card.service-low {
+  background: linear-gradient(145deg, #fefce8 0%, #fef9c3 100%);
+  border-color: #fde047;
+}
+
 .service-icon {
   width: 3rem;
   height: 3rem;
@@ -2855,6 +2833,10 @@ select.field-input {
 
 .service-card.service-medium .service-icon {
   background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-navy) 100%);
+}
+
+.service-card.service-low .service-icon {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
 }
 
 .service-content {
@@ -2894,6 +2876,55 @@ select.field-input {
   font-size: 0.938rem;
   color: var(--text-medium);
   line-height: 1.5;
+}
+
+/* Perfect Score Section */
+.perfect-score-section {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.15);
+  border: 2px solid #6ee7b7;
+}
+
+.perfect-score-card {
+  text-align: center;
+  padding: 2rem;
+}
+
+.perfect-score-icon {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: var(--white);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+  animation: trophy-bounce 2s ease-in-out infinite;
+}
+
+@keyframes trophy-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.perfect-score-card h4 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #065f46;
+  margin-bottom: 1rem;
+}
+
+.perfect-score-card p {
+  font-size: 1.125rem;
+  color: #047857;
+  line-height: 1.6;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 /* CTA Section */
@@ -4469,12 +4500,15 @@ select.field-input {
   gap: 0.25rem;
   padding: 0.25rem 0.75rem;
   background: linear-gradient(135deg, var(--success-green), var(--accent-green));
-  color: var(--white);
+  color: var(--gray-900);
   border-radius: 12px;
   font-size: 0.75rem;
-  font-weight: 600;
   margin-bottom: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
 
 .service-badge i {
   font-size: 0.7rem;
@@ -4521,6 +4555,22 @@ select.field-input {
 
 .btn-back-home i {
   font-size: 0.875rem;
+}
+
+/* Inside blue header boxes */
+.btn-back-home--header {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: white;
+  box-shadow: none;
+  margin-bottom: 1.25rem;
+}
+
+.btn-back-home--header:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: none;
+  transform: translateX(-2px);
 }
 
 /* ITAC Review Button */

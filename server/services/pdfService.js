@@ -7,6 +7,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
+ * Get the display name for a pillar - always uses short name to match the assessment results page
+ */
+const getPillarDisplayName = (pillar) => {
+  // Prefer pillar_short_name (e.g. "Culture") over pillar_name (e.g. "Culture & Change")
+  return pillar.pillar_short_name || pillar.pillar_name || pillar.dimension_name || 'Unknown';
+};
+
+/**
  * Generate professional PDF assessment report following Forvis Mazars branding guidelines
  */
 export const generateAssessmentPDF = (userData, assessmentData, outputPath) => {
@@ -179,7 +187,7 @@ export const generateAssessmentPDF = (userData, assessmentData, outputPath) => {
       doc.fontSize(40)
          .font('Helvetica-Bold')
          .fillColor(categoryColor)
-         .text(`${overall_score.toFixed(1)}%`, doc.page.width - 180, yPosition + 20, {
+         .text(`${Math.round(overall_score)}%`, doc.page.width - 180, yPosition + 20, {
            width: 130,
            align: 'right'
          });
@@ -233,17 +241,20 @@ export const generateAssessmentPDF = (userData, assessmentData, outputPath) => {
           yPosition = 50;
         }
 
+        // Use short name to match assessment results page
+        const displayName = getPillarDisplayName(pillar);
+
         // Pillar name
         doc.fontSize(12)
            .font('Helvetica-Bold')
            .fillColor(colors.darkGray)
-           .text(pillar.pillar_name, 50, yPosition);
+           .text(displayName, 50, yPosition);
 
         // Score
         doc.fontSize(14)
            .font('Helvetica-Bold')
            .fillColor(colors.primaryBlue)
-           .text(`${pillar.score.toFixed(1)}%`, doc.page.width - 100, yPosition, {
+           .text(`${Math.round(pillar.score)}%`, doc.page.width - 100, yPosition, {
              width: 50,
              align: 'right'
            });
@@ -297,7 +308,7 @@ export const generateAssessmentPDF = (userData, assessmentData, outputPath) => {
       const bestPractice = 80;
       const gaps = dimension_scores
         .map(pillar => ({
-          name: pillar.pillar_name,
+          name: getPillarDisplayName(pillar),
           current: pillar.score,
           gap: bestPractice - pillar.score,
           priority: (bestPractice - pillar.score) >= 40 ? 'Critical' :
@@ -335,7 +346,7 @@ export const generateAssessmentPDF = (userData, assessmentData, outputPath) => {
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.mediumGray)
-             .text(`Current: ${gap.current.toFixed(1)}% | Best Practice: ${bestPractice}% | Gap: ${gap.gap.toFixed(0)} points`, 
+             .text(`Current: ${Math.round(gap.current)}% | Best Practice: ${bestPractice}% | Gap: ${Math.round(gap.gap)} points`, 
                    70, yPosition + 24);
 
           // Priority label
@@ -841,7 +852,7 @@ export const generateAssessmentPDFBuffer = (userData, assessmentData) => {
       doc.fontSize(40)
          .font('Helvetica-Bold')
          .fillColor(categoryColor)
-         .text(`${overall_score.toFixed(1)}%`, doc.page.width - 180, yPosition + 20, {
+         .text(`${Math.round(overall_score)}%`, doc.page.width - 180, yPosition + 20, {
            width: 130,
            align: 'right'
          });
@@ -893,15 +904,18 @@ export const generateAssessmentPDFBuffer = (userData, assessmentData) => {
           yPosition = 50;
         }
 
+        // Use short name to match assessment results page
+        const displayName = getPillarDisplayName(pillar);
+
         doc.fontSize(12)
            .font('Helvetica-Bold')
            .fillColor(colors.darkGray)
-           .text(pillar.pillar_name, 50, yPosition);
+           .text(displayName, 50, yPosition);
 
         doc.fontSize(14)
            .font('Helvetica-Bold')
            .fillColor(colors.primaryBlue)
-           .text(`${pillar.score.toFixed(1)}%`, doc.page.width - 100, yPosition, {
+           .text(`${Math.round(pillar.score)}%`, doc.page.width - 100, yPosition, {
              width: 50,
              align: 'right'
            });
@@ -952,7 +966,7 @@ export const generateAssessmentPDFBuffer = (userData, assessmentData) => {
       const bestPractice = 80;
       const gaps = dimension_scores
         .map(pillar => ({
-          name: pillar.pillar_name,
+          name: getPillarDisplayName(pillar),
           current: pillar.score,
           gap: bestPractice - pillar.score,
           priority: (bestPractice - pillar.score) >= 40 ? 'Critical' :
@@ -990,7 +1004,7 @@ export const generateAssessmentPDFBuffer = (userData, assessmentData) => {
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.mediumGray)
-             .text(`Current: ${gap.current.toFixed(1)}% | Best Practice: ${bestPractice}% | Gap: ${gap.gap.toFixed(0)} points`, 
+             .text(`Current: ${Math.round(gap.current)}% | Best Practice: ${bestPractice}% | Gap: ${Math.round(gap.gap)} points`, 
                    70, yPosition + 24);
 
           // Priority label
@@ -1258,3 +1272,4 @@ export const generateAssessmentPDFBuffer = (userData, assessmentData) => {
     }
   });
 };
+

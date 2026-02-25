@@ -156,7 +156,8 @@ const AdminLogin = ({ onLoginSuccess }) => {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="btn-back"
+              className="btn-back-home"
+              style={{ width: 'fit-content' }}
             >
               <i className="fas fa-arrow-left"></i>
               Back to Home

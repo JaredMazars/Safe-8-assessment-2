@@ -61,8 +61,17 @@ leadRouter.post('/create', async (req, res) => {
 
     logger.info('Creating new lead', { contactName, email, companyName });
 
-    // Use updateOrCreate to handle duplicate emails
-    const result = await Lead.updateOrCreate({
+    // Check for duplicate email before creating
+    const existingLead = await Lead.getByEmail(email);
+    if (existingLead) {
+      logger.warn('Lead creation blocked - email already registered', { email });
+      return res.status(409).json({
+        success: false,
+        message: 'Email already registered. Please log in or use a different email address.'
+      });
+    }
+
+    const result = await Lead.create({
       contactName,
       jobTitle,
       email,
@@ -74,12 +83,21 @@ leadRouter.post('/create', async (req, res) => {
       password
     });
 
+    logger.info('Lead creation completed', { success: result.success, leadId: result.leadId });
     
-    logger.info('Lead operation completed', { success: result.success, isNew: result.isNew, leadId: result.leadId });
-    
+    // Safety net: DB unique constraint caught it
+    if (!result.success && result.duplicate) {
+      logger.warn('Lead creation blocked by DB unique constraint', { email });
+      return res.status(409).json({
+        success: false,
+        message: 'Email already registered. Please log in or use a different email address.'
+      });
+    }
+
     if (result.success) {
       // Send welcome email for new accounts
-      if (result.isNew) {
+      const isNew = true;
+      if (isNew) {
         try {
           await sendWelcomeEmail({
             contact_name: contactName,
@@ -95,8 +113,8 @@ leadRouter.post('/create', async (req, res) => {
       return res.status(200).json({
         success: true,
         leadId: result.leadId,
-        isNew: result.isNew,
-        message: `Lead ${result.isNew ? 'created' : 'updated'} successfully`
+        isNew: true,
+        message: 'Lead created successfully'
       });
     } else {
       logger.error('Lead creation failed', { error: result.error });
@@ -386,10 +404,12 @@ leadRouter.post('/login', validateLeadLogin, async (req, res) => {
 
 // Export assessment as PDF (for users to download their own assessments)
 // MUST be before /:leadId route to avoid route matching conflicts
-leadRouter.get('/assessments/:assessmentId/export-pdf', async (req, res) => {
+leadRouter.post('/assessments/:assessmentId/export-pdf', async (req, res) => {
   try {
     const { assessmentId } = req.params;
     const id = parseInt(assessmentId);
+    // Frontend can send current dimension scores directly to avoid stale DB data
+    const { dimension_scores: frontendDimensionScores, overall_score: frontendOverallScore } = req.body || {};
 
     logger.info('PDF export request received', { assessmentId: id });
 
@@ -419,15 +439,6 @@ leadRouter.get('/assessments/:assessmentId/export-pdf', async (req, res) => {
 
     logger.info('Assessment found, preparing data', { assessmentId: id });
 
-    // Debug: Log raw database values
-    logger.info('Raw assessment from DB', {
-      id: assessment.id,
-      dimension_scores_type: typeof assessment.dimension_scores,
-      dimension_scores_value: assessment.dimension_scores ? String(assessment.dimension_scores).substring(0, 100) : 'NULL',
-      insights_type: typeof assessment.insights,
-      insights_value: assessment.insights ? String(assessment.insights).substring(0, 100) : 'NULL'
-    });
-
     // Prepare user data
     const userData = {
       contact_name: assessment.contact_name,
@@ -436,9 +447,13 @@ leadRouter.get('/assessments/:assessmentId/export-pdf', async (req, res) => {
       job_title: assessment.job_title
     };
 
-    // Prepare assessment data - with better error handling
+    // Use frontend-provided dimension scores if available (they have the correct short names and fresh scores)
+    // Fall back to DB stored scores only if frontend didn't send them
     let dimension_scores_parsed = [];
-    if (assessment.dimension_scores) {
+    if (frontendDimensionScores && Array.isArray(frontendDimensionScores) && frontendDimensionScores.length > 0) {
+      dimension_scores_parsed = frontendDimensionScores;
+      logger.info('Using frontend-provided dimension scores', { count: dimension_scores_parsed.length });
+    } else if (assessment.dimension_scores) {
       if (typeof assessment.dimension_scores === 'string') {
         try {
           dimension_scores_parsed = JSON.parse(assessment.dimension_scores);
@@ -448,6 +463,7 @@ leadRouter.get('/assessments/:assessmentId/export-pdf', async (req, res) => {
       } else if (Array.isArray(assessment.dimension_scores)) {
         dimension_scores_parsed = assessment.dimension_scores;
       }
+      logger.info('Using DB dimension scores', { count: dimension_scores_parsed.length });
     }
 
     let insights_parsed = {};
@@ -463,8 +479,10 @@ leadRouter.get('/assessments/:assessmentId/export-pdf', async (req, res) => {
       }
     }
 
+    const overall_score = frontendOverallScore !== undefined ? parseFloat(frontendOverallScore) : parseFloat(assessment.overall_score);
+
     const assessmentData = {
-      overall_score: parseFloat(assessment.overall_score),
+      overall_score,
       dimension_scores: dimension_scores_parsed,
       insights: insights_parsed,
       assessment_type: assessment.assessment_type || 'GENERAL',
@@ -475,11 +493,9 @@ leadRouter.get('/assessments/:assessmentId/export-pdf', async (req, res) => {
       assessmentId: id,
       overallScore: assessmentData.overall_score,
       dimensionScoresCount: assessmentData.dimension_scores?.length || 0,
-      dimensionScores: assessmentData.dimension_scores,
+      dimensionScoreNames: assessmentData.dimension_scores?.map(d => d.pillar_name),
       hasInsights: !!assessmentData.insights
     });
-
-    logger.info('Generating PDF buffer', { assessmentId: id });
 
     // Generate PDF buffer
     const pdfBuffer = await generateAssessmentPDFBuffer(userData, assessmentData);

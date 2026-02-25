@@ -126,8 +126,9 @@ const ForgotPassword = () => {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="btn-secondary"
+              className="btn-back-home"
               disabled={isSubmitting}
+              style={{ width: 'fit-content' }}
             >
               <i className="fas fa-arrow-left"></i>
               Back to Home

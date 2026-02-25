@@ -101,6 +101,7 @@ assessmentRouter.post('/submit-complete', async (req, res) => {
     */
 
     // Use updateOrCreate to handle duplicate assessments
+    console.log('📊 Dimension scores being saved:', JSON.stringify(assessmentData.dimension_scores, null, 2));
     const result = await Assessment.updateOrCreate(assessmentData);
     
     if (result.success) {

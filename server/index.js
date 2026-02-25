@@ -13,6 +13,7 @@ import { generateToken, doubleCsrfProtection, cookieParser } from './middleware/
 import database from './config/database.js';
 import './services/emailService.js'; // Initialize email service
 import { connectRedis } from './config/redis.js';
+import { cache } from './config/simpleCache.js';
 import responseRouter from './routes/response.js';
 import leadRouter from './routes/lead.js';
 import assessmentResponseRouter from './routes/assessmentResponse.js';
@@ -241,6 +242,40 @@ console.log('✅ Rate limiting enabled');
 // ✅ Apply strict rate limiting to authentication endpoints
 app.use('/api/admin/login', authLimiter);
 app.use('/api/lead/login', authLimiter);
+
+// ✅ Cache management endpoint (development only)
+app.post('/api/clear-cache', async (req, res) => {
+  try {
+    console.log('🧹 Cache clear requested');
+    
+    // Clear in-memory cache
+    cache.clear();
+    console.log('✅ In-memory cache cleared');
+    
+    // Reset database connection pool
+    await database.resetPool();
+    console.log('✅ Database pool reset');
+    
+    // Test new connection
+    const connected = await database.testConnection();
+    
+    res.json({
+      success: true,
+      message: 'Cache cleared and database pool reset',
+      cache_cleared: true,
+      db_pool_reset: true,
+      db_connected: connected,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error clearing cache:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear cache',
+      error: error.message
+    });
+  }
+});
 
 // Public API endpoint for industries (used by welcome screen)
 app.get('/api/industries', async (req, res) => {

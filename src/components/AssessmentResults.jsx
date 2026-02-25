@@ -89,8 +89,12 @@ const AssessmentResults = ({
           }
         }
         
-        // Try to get dimension scores from backend
-        if (userId && assessmentType) {
+        // Use pillar scores passed directly from assessment submission (most accurate)
+        if (results?.pillarScores && results.pillarScores.length > 0) {
+          console.log('✅ Using pillar scores from assessment submission:', results.pillarScores.length, 'pillars');
+          setDimensionScores(results.pillarScores);
+        } else if (userId && assessmentType) {
+          // Try to get dimension scores from backend
           try {
             const response = await api.get(`/api/assessment/current/${userId}/${assessmentType}`);
             
@@ -99,7 +103,6 @@ const AssessmentResults = ({
               setDimensionScores(response.data.data.dimension_scores);
             } else {
               console.log('⚠️ No dimension scores in API response, falling back to simulated');
-              // Generate simulated dimension scores based on overall score
               generateSimulatedScores();
             }
           } catch (apiError) {
@@ -149,10 +152,20 @@ const AssessmentResults = ({
 
     try {
       console.log('🔄 Exporting PDF for assessment:', results.assessmentId);
+      console.log('📊 Sending dimension scores to PDF:', dimensionScores.map(d => `${d.pillar_name}: ${Math.round(d.score)}%`));
       
-      const response = await api.get(`/api/lead/assessments/${results.assessmentId}/export-pdf`, {
-        responseType: 'blob'
-      });
+      // POST the current dimension scores so the PDF exactly matches what is shown on screen
+      const response = await api.post(
+        `/api/lead/assessments/${results.assessmentId}/export-pdf`,
+        {
+          dimension_scores: dimensionScores.map(d => ({
+            pillar_name: d.pillar_name || d.dimension_name,
+            score: Math.round(d.score)
+          })),
+          overall_score: Math.round(score)
+        },
+        { responseType: 'blob' }
+      );
 
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
@@ -378,7 +391,7 @@ const AssessmentResults = ({
 
   const getBenchmarkComparison = () => {
     if (!benchmarkData || !benchmarkData.total_assessments || benchmarkData.total_assessments === 0) {
-      return 'Industry benchmark data will be available as more assessments are completed';
+      return '';
     }
 
     const yourScore = Math.round(score);
@@ -440,6 +453,9 @@ const AssessmentResults = ({
       <div className="results-wrapper">
         {/* Header */}
         <div className="results-header">
+          <button onClick={() => navigate('/')} className='btn-back-home btn-back-home--header'>
+            <i className="fas fa-arrow-left"></i> Back to Home
+          </button>
           <h1 className="results-title">Your AI Readiness Results</h1>
           <p className="results-subtitle">SAFE-8 AI Readiness Assessment</p>
           <div className="results-meta">
@@ -536,15 +552,15 @@ const AssessmentResults = ({
         </div>
 
         {/* Gap Analysis */}
-        <div className="analysis-section">
-          <div className="section-header">
-            <div className="header-accent"></div>
-            <h3 className="section-title">Critical Gap Analysis</h3>
-          </div>
-          
-          <div className="gaps-grid">
-            {gaps.length > 0 ? (
-              gaps.map((gap, index) => (
+        {gaps.length > 0 ? (
+          <div className="analysis-section">
+            <div className="section-header">
+              <div className="header-accent"></div>
+              <h3 className="section-title">Critical Gap Analysis</h3>
+            </div>
+            
+            <div className="gaps-grid">
+              {gaps.map((gap, index) => (
                 <div key={index} className={`gap-item gap-${gap.priority}`}>
                   <div className="gap-content">
                     <div className="gap-icon">
@@ -559,70 +575,133 @@ const AssessmentResults = ({
                     </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="no-gaps">No significant gaps identified. You're performing at or above best practice levels!</p>
-            )}
-          </div>
-        </div>
-
-        {/* Service Recommendations */}
-        <div className="recommendations-section">
-          <div className="section-header">
-            <div className="header-accent"></div>
-            <h3 className="section-title">Recommended Services & Solutions</h3>
-          </div>
-          
-          <div className="services-grid">
-            <div className="service-card service-high">
-              <div className="service-icon">
-                <i className="fas fa-lightbulb"></i>
-              </div>
-              <div className="service-content">
-                <h4 className="service-title">AI Strategy & Roadmap Development</h4>
-                <span className="service-badge">
-                  <i className="fas fa-star"></i>
-                  Recommended for scores below 60%
-                </span>
-                <p className="service-description">
-                  Develop a comprehensive AI strategy aligned with business objectives and create a prioritized implementation roadmap.
-                </p>
-              </div>
-            </div>
-
-            <div className="service-card service-high">
-              <div className="service-icon">
-                <i className="fas fa-database"></i>
-              </div>
-              <div className="service-content">
-                <h4 className="service-title">Data Foundation & Governance</h4>
-                <span className="service-badge">
-                  <i className="fas fa-star"></i>
-                  Essential for AI success
-                </span>
-                <p className="service-description">
-                  Establish robust data governance frameworks and improve data quality to support AI initiatives.
-                </p>
-              </div>
-            </div>
-
-            <div className="service-card service-medium">
-              <div className="service-icon">
-                <i className="fas fa-users"></i>
-              </div>
-              <div className="service-content">
-                <h4 className="service-title">AI Talent & Capability Building</h4>
-                <span className="service-badge">
-                  <i className="fas fa-check-circle"></i>
-                  Long-term competitive advantage
-                </span>
-                <p className="service-description">
-                  Build internal AI capabilities through training programs and strategic hiring recommendations.
-                </p>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="perfect-score-section">
+            <div className="section-header">
+              <div className="header-accent"></div>
+              <h3 className="section-title">🎉 Exceptional Performance!</h3>
+            </div>
+            <div className="perfect-score-card">
+              <div className="perfect-score-icon">
+                <i className="fas fa-star"></i>
+              </div>
+              <h4>No Critical Gaps Identified</h4>
+              <p>
+                Outstanding! All your SAFE-8 pillars are performing at or above the 80% best practice benchmark. 
+                Your organization demonstrates exceptional AI readiness across all dimensions.
+              </p>
+              <p style={{ marginTop: '1rem', fontStyle: 'italic', opacity: 0.9 }}>
+                Keep up the excellent work and continue monitoring for continuous improvement opportunities.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Service Recommendations - Only show if score is below 100% */}
+        {score < 100 && (
+          <div className="recommendations-section">
+            <div className="section-header">
+              <div className="header-accent"></div>
+              <h3 className="section-title">Recommended Services & Solutions</h3>
+            </div>
+            
+            <div className="services-grid">
+              {score < 60 && (
+                <div className="service-card service-high">
+                  <div className="service-icon">
+                    <i className="fas fa-lightbulb"></i>
+                  </div>
+                  <div className="service-content">
+                    <h4 className="service-title">AI Strategy & Roadmap Development</h4>
+                    <span className="service-badge">
+                      Recommended for scores below 60%
+                    </span>
+                    <p className="service-description">
+                      Develop a comprehensive AI strategy aligned with business objectives and create a prioritized implementation roadmap.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {score < 80 && (
+                <div className="service-card service-high">
+                  <div className="service-icon">
+                    <i className="fas fa-database"></i>
+                  </div>
+                  <div className="service-content">
+                    <h4 className="service-title">Data Foundation & Governance</h4>
+                    <span className="service-badge">
+                      Recommended for scores below 80%
+                    </span>
+                    <p className="service-description">
+                      Establish robust data governance frameworks and improve data quality to support AI initiatives.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {score < 95 && (
+                <div className="service-card service-medium">
+                  <div className="service-icon">
+                    <i className="fas fa-users"></i>
+                  </div>
+                  <div className="service-content">
+                    <h4 className="service-title">AI Talent & Capability Building</h4>
+                    <span className="service-badge">
+                      Recommended for scores below 95%
+                    </span>
+                    <p className="service-description">
+                      Build internal AI capabilities through training programs and strategic hiring recommendations.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {score >= 95 && score < 100 && (
+                <div className="service-card service-low">
+                  <div className="service-icon">
+                    <i className="fas fa-rocket"></i>
+                  </div>
+                  <div className="service-content">
+                    <h4 className="service-title">AI Excellence & Innovation Acceleration</h4>
+                    <span className="service-badge">
+                      Fine-tuning for AI leaders
+                    </span>
+                    <p className="service-description">
+                      Optimize your already strong AI capabilities with advanced strategies, emerging technologies, and innovation frameworks to maintain competitive advantage.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Perfect Score Congratulations */}
+        {score === 100 && gaps.length === 0 && (
+          <div className="perfect-score-section">
+            <div className="section-header">
+              <div className="header-accent"></div>
+              <h3 className="section-title">🎉 Outstanding Achievement!</h3>
+            </div>
+            <div className="perfect-score-card">
+              <div className="perfect-score-icon">
+                <i className="fas fa-trophy"></i>
+              </div>
+              <h4>Perfect AI Readiness Score</h4>
+              <p>
+                Congratulations! You've achieved a perfect score across all SAFE-8 pillars. 
+                Your organization demonstrates exceptional AI maturity and best-in-class practices.
+              </p>
+              <p style={{ marginTop: '1rem', fontStyle: 'italic', opacity: 0.9 }}>
+                Continue to maintain these high standards and stay ahead of emerging AI trends and technologies.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* CTA Section */}
         <div className="cta-section">
@@ -635,7 +714,7 @@ const AssessmentResults = ({
             onClick={() => window.open('mailto:contact@forvismazars.com?subject=AI Strategy Consultation Request', '_blank')}
           >
             <i className="fas fa-calendar-alt"></i>
-            Book Your Free 30-Minute Strategy Session
+            Book Your Free 30 Minute Strategy Session
           </button>
           <p className="cta-note">
             <i className="fas fa-check-circle"></i>
