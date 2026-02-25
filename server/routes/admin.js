@@ -13,6 +13,7 @@ import { generateITACReviewPDFBuffer } from '../services/itacReviewPdfService.js
 import { generateAppDocumentationPDFBuffer } from '../services/appDocumentationPdfService.js';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { sanitizeLog } from '../utils/logger.js';
 
 dotenv.config();
 
@@ -112,13 +113,13 @@ router.post('/login', validateAdminLogin, async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
-    console.log('🔐 Admin login attempt:', username);
-    console.log('IP:', ipAddress, 'User-Agent:', userAgent);
+    console.log('🔐 Admin login attempt:', sanitizeLog(username));
+    console.log('IP:', sanitizeLog(ipAddress), 'User-Agent:', sanitizeLog(userAgent));
 
     const result = await Admin.authenticate(username, password, ipAddress, userAgent);
 
     if (result.success) {
-      console.log('✅ Admin logged in:', result.admin.username);
+      console.log('✅ Admin logged in:', sanitizeLog(result.admin.username));
       res.json(result);
     } else {
       console.log('❌ Login failed:', result.message);
@@ -144,7 +145,7 @@ router.post('/logout', doubleCsrfProtection, authenticateAdmin, async (req, res)
     const token = req.headers.authorization?.replace('Bearer ', '');
     await Admin.logout(token);
     
-    console.log('✅ Admin logged out:', req.admin.username);
+    console.log('✅ Admin logged out:', sanitizeLog(req.admin.username));
     
     res.json({
       success: true,
@@ -482,8 +483,7 @@ router.get('/questions/:questionId', authenticateAdmin, async (req, res) => {
 // Create new question (CSRF protected)
 router.post('/questions', authenticateAdmin, async (req, res) => {
   try {
-    console.log('📝 Creating question - Request body:', JSON.stringify(req.body, null, 2));
-    console.log('👤 Admin user:', req.admin?.id, req.admin?.email);
+    console.log('📝 Creating question by admin id:', req.admin?.id);
     
     const {
       assessment_type,
@@ -1043,11 +1043,9 @@ router.get('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) => 
 // Create new admin
 router.post('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) => {
   try {
-    console.log('📥 POST /api/admin/admins - Request body:', req.body);
-    
     const { username, email, password, full_name, role } = req.body;
 
-    console.log('📥 Create admin request:', { username, email, full_name, role, hasPassword: !!password });
+    console.log('📥 Create admin request:', { username: sanitizeLog(username), email: sanitizeLog(email), role: sanitizeLog(role), hasPassword: !!password });
 
     if (!username || !email) {
       console.log('❌ Validation failed: username or email missing');
@@ -1072,7 +1070,7 @@ router.post('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) =>
       
       // If the admin was previously deleted, restore it
       if (existing.deleted_at) {
-        console.log('🔄 Restoring previously deleted admin:', existing.username);
+        console.log('🔄 Restoring previously deleted admin:', sanitizeLog(existing.username));
         
         // Generate new temporary password
         const bcrypt = (await import('bcrypt')).default;
@@ -1231,7 +1229,7 @@ router.post('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) =>
     // Log activity
     await Admin.logActivity(req.admin.id, 'CREATE', 'admin', adminId, `Created admin: ${username}`, req.ip, req.headers['user-agent']);
 
-    console.log('✅ Admin created successfully:', username);
+    console.log('✅ Admin created successfully:', sanitizeLog(username));
 
     res.json({
       success: true,
@@ -1529,12 +1527,9 @@ router.delete('/admins/:adminId', authenticateAdmin, requireSuperAdmin, async (r
 // Create new user
 router.post('/users', authenticateAdmin, async (req, res) => {
   console.log('📥 POST /api/admin/users - Request received');
-  console.log('Request body:', req.body);
   
   try {
     const { contact_name, email, company_name, company_size, country, industry, job_title, phone_number, first_name, last_name } = req.body;
-
-    console.log('Extracted fields:', { contact_name, email, company_name, company_size, country, industry, job_title, phone_number, first_name, last_name });
 
     // Validate required fields (password no longer required - will be auto-generated)
     if (!contact_name || !email) {
@@ -1550,7 +1545,7 @@ router.post('/users', authenticateAdmin, async (req, res) => {
     // Check if email already exists
     const existingUser = await Lead.getByEmail(email);
     if (existingUser) {
-      console.log('❌ Email already exists:', email);
+      console.log('❌ Email already exists for requested user');
       return res.status(409).json({
         success: false,
         message: 'Email already exists'
@@ -2117,7 +2112,7 @@ router.put('/questions/:questionId/reorder', authenticateAdmin, async (req, res)
     const { questionId } = req.params;
     const { direction, newOrder } = req.body; // 'up' or 'down' OR direct newOrder
 
-    console.log('📋 Reorder request received:', { questionId, direction, newOrder, body: req.body });
+    console.log('📋 Reorder request received:', { questionId: sanitizeLog(questionId), direction: sanitizeLog(direction), newOrder: sanitizeLog(newOrder) });
 
     // Get current question
     const getQuestionSql = `SELECT * FROM assessment_questions WHERE id = ?;`;
@@ -2768,7 +2763,7 @@ router.post('/config/industries', authenticateAdmin, async (req, res) => {
       VALUES (?, ?);
     `;
 
-    console.log('🔍 Executing industry insert with name:', name, 'admin:', req.admin.id);
+    console.log('🔍 Executing industry insert with name:', sanitizeLog(name), 'admin:', req.admin.id);
     const result = await database.query(sql, [name, req.admin.id]);
     console.log('🔍 Raw result from database:', JSON.stringify(result, null, 2));
     
@@ -3227,7 +3222,7 @@ router.put('/config/pillars/:pillarId', authenticateAdmin, async (req, res) => {
 
     // Update all questions using this pillar if name changed
     if (name !== undefined && name !== currentPillar.name) {
-      console.log(`📋 Updating questions from "${currentPillar.name}" to "${name}"`);
+      console.log(`📋 Updating questions from "${sanitizeLog(currentPillar.name)}" to "${sanitizeLog(name)}"`);
       const updateQuestionsNameSql = `
         UPDATE assessment_questions
         SET pillar_name = ?
@@ -3238,7 +3233,7 @@ router.put('/config/pillars/:pillarId', authenticateAdmin, async (req, res) => {
 
     // Update all questions using this pillar if short_name changed
     if (short_name !== undefined && short_name.toUpperCase() !== currentPillar.short_name) {
-      console.log(`📋 Updating questions short name from "${currentPillar.short_name}" to "${short_name.toUpperCase()}"`);
+      console.log(`📋 Updating questions short name from "${sanitizeLog(currentPillar.short_name)}" to "${sanitizeLog(short_name.toUpperCase())}"`);
       const updateQuestionsShortSql = `
         UPDATE assessment_questions
         SET pillar_short_name = ?

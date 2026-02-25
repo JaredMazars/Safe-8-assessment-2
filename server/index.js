@@ -195,7 +195,7 @@ if (process.env.NODE_ENV === 'production') {
       
       // Only redirect if host is in allowlist
       if (allowedHosts.includes(host)) {
-        // Use relative path to prevent absolute URL manipulation
+        // NOSONAR - safe: host validated against explicit allowlist above; req.url is a relative path only
         res.redirect(301, `https://${host}${req.url}`);
       } else {
         // Reject requests with suspicious hosts

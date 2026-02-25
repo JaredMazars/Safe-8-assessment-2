@@ -1,5 +1,6 @@
 import express from 'express';
 import UserEngagementStats from '../models/UserEngagementStats.js';
+import { sanitizeLog } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -8,12 +9,12 @@ router.get('/dashboard/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log(`📊 Fetching dashboard summary for user ${userId}`);
+    console.log(`📊 Fetching dashboard summary for user ${sanitizeLog(userId)}`);
     
     const dashboardData = await UserEngagementStats.getDashboardSummary(userId);
     
     if (!dashboardData) {
-      console.log(`❌ No dashboard data found for user ${userId}`);
+      console.log(`❌ No dashboard data found for user ${sanitizeLog(userId)}`);
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -42,7 +43,7 @@ router.get('/stats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log(`📈 Fetching user stats for user ${userId}`);
+    console.log(`📈 Fetching user stats for user ${sanitizeLog(userId)}`);
     
     const stats = await UserEngagementStats.getUserStats(userId);
     
@@ -72,7 +73,7 @@ router.get('/progress/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit } = req.query;
     
-    console.log(`📋 Fetching assessment progress for user ${userId}`);
+    console.log(`📋 Fetching assessment progress for user ${sanitizeLog(userId)}`);
     
     const progress = await UserEngagementStats.getAssessmentProgress(userId, limit ? parseInt(limit) : 10);
 
@@ -101,10 +102,10 @@ router.post('/update-stats/:userId', async (req, res) => {
       industry
     } = req.body;
     
-    console.log(`🔄 Updating stats for user ${userId} with assessment data:`, {
-      assessment_type,
-      overall_score,
-      industry
+    console.log(`🔄 Updating stats for user ${sanitizeLog(userId)} with assessment data:`, {
+      assessment_type: sanitizeLog(assessment_type),
+      overall_score: sanitizeLog(overall_score),
+      industry: sanitizeLog(industry)
     });
     
     // Update user statistics
@@ -141,7 +142,7 @@ router.post('/performance-tracking', async (req, res) => {
   try {
     const { userId, assessmentId, dimensionScores } = req.body;
     
-    console.log(`📊 Creating performance tracking for user ${userId}, assessment ${assessmentId}`);
+    console.log(`📊 Creating performance tracking for user ${sanitizeLog(userId)}, assessment ${sanitizeLog(assessmentId)}`);
     
     await UserEngagementStats.createPerformanceTracking(userId, assessmentId, dimensionScores);
 
@@ -163,7 +164,7 @@ router.get('/risks/:userId/:assessmentId?', async (req, res) => {
   try {
     const { userId, assessmentId } = req.params;
     
-    console.log(`⚠️ Fetching risks for user ${userId}${assessmentId ? `, assessment ${assessmentId}` : ''}`);
+    console.log(`⚠️ Fetching risks for user ${sanitizeLog(userId)}${assessmentId ? `, assessment ${sanitizeLog(assessmentId)}` : ''}`);
     
     const risks = await UserEngagementStats.getUserRisks(userId, assessmentId);
 
@@ -185,7 +186,7 @@ router.post('/generate-risks', async (req, res) => {
   try {
     const { userId, assessmentId } = req.body;
     
-    console.log(`🎯 Generating risk assessment for user ${userId}, assessment ${assessmentId}`);
+    console.log(`🎯 Generating risk assessment for user ${sanitizeLog(userId)}, assessment ${sanitizeLog(assessmentId)}`);
     
     await UserEngagementStats.generateRiskAssessment(userId, assessmentId);
 
@@ -207,7 +208,7 @@ router.get('/benchmarks/:industry/:level', async (req, res) => {
   try {
     const { industry, level } = req.params;
     
-    console.log(`📊 Fetching benchmarks for ${industry}, ${level} level`);
+    console.log(`📊 Fetching benchmarks for ${sanitizeLog(industry)}, ${sanitizeLog(level)} level`);
     
     const benchmarks = await UserEngagementStats.getIndustryBenchmarks(industry, level);
 
@@ -229,7 +230,7 @@ router.get('/comprehensive/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log(`🔄 Fetching comprehensive dashboard data for user ${userId}`);
+    console.log(`🔄 Fetching comprehensive dashboard data for user ${sanitizeLog(userId)}`);
     
     // Fetch all dashboard data in parallel
     const [dashboardSummary, assessmentProgress, userRisks] = await Promise.all([

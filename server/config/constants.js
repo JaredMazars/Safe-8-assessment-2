@@ -21,7 +21,7 @@ export const RISK_LEVELS = {
 // Security Configuration
 export const SECURITY = {
   BCRYPT_ROUNDS: 12,
-  PASSWORD_MIN_LENGTH: 8,
+  PASSWORD_MIN_LENGTH: 8, // NOSONAR - configuration constant, not a hardcoded credential
   CSRF_SECRET_MIN_LENGTH: 32,
   SESSION_TIMEOUT_MS: 24 * 60 * 60 * 1000, // 24 hours
   MAX_LOGIN_ATTEMPTS: 5

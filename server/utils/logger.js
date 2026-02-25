@@ -105,3 +105,14 @@ const logger = {
 
 export default logger;
 export { redact };
+
+/**
+ * Sanitize a user-controlled value before including it in a log message.
+ * Strips newline/carriage-return/tab characters to prevent log-injection attacks (CWE-117).
+ * Truncates to 200 characters to avoid log flooding.
+ *
+ * @param {*} val - The value to sanitize (will be coerced to string)
+ * @returns {string} Safe string suitable for logging
+ */
+export const sanitizeLog = (val) =>
+  String(val ?? '').replace(/[\r\n\t]/g, ' ').substring(0, 200);

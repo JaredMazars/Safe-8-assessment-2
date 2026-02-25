@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import database from '../config/database.js';
+import { sanitizeLog } from '../utils/logger.js';
 
 const assessmentRouter = Router();
 
@@ -7,7 +8,7 @@ const assessmentRouter = Router();
 assessmentRouter.get('/current/:userId/:assessmentType', async (req, res) => {
   try {
     const { userId, assessmentType } = req.params;
-    console.log(`🔍 Getting current assessment for user ${userId}, type ${assessmentType}`);
+    console.log(`🔍 Getting current assessment for user ${sanitizeLog(userId)}, type ${sanitizeLog(assessmentType)}`);
     
     // Get the most recent assessment for this user and type (using parameterized query to prevent SQL injection)
     const query = `
@@ -66,7 +67,7 @@ assessmentRouter.get('/current/:userId/:assessmentType', async (req, res) => {
 assessmentRouter.get('/benchmark/:assessmentType/:industry', async (req, res) => {
   try {
     const { assessmentType, industry } = req.params;
-    console.log(`📊 Getting benchmark data for ${assessmentType} in ${industry}`);
+    console.log(`📊 Getting benchmark data for ${sanitizeLog(assessmentType)} in ${sanitizeLog(industry)}`);
     
     // Get overall average for this assessment type and industry
     const overallQuery = `
@@ -124,7 +125,7 @@ assessmentRouter.get('/benchmark/:assessmentType/:industry', async (req, res) =>
 
 assessmentRouter.post('/submit', async (req, res) => {
   try {
-    console.log('🚀 Assessment submission received:', req.body);
+    console.log('🚀 Assessment submission received');
     
     res.json({
       success: true,

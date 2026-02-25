@@ -3,6 +3,7 @@ import express from 'express';
 import Response from '../models/Response.js';
 import Lead from '../models/Lead.js';
 import database from '../config/database.js';
+import { sanitizeLog } from '../utils/logger.js';
 
 const responseRouter = express.Router();
 
@@ -183,11 +184,11 @@ responseRouter.get('/responses/:leadUserId', async (req, res) => {
 responseRouter.post('/lead', async (req, res) => {
   try {
     const leadData = req.body;
-    console.log('📝 Creating lead with data:', leadData);
+    console.log('📝 Creating new lead');
     
     // Use updateOrCreate to handle duplicate emails
     const result = await Lead.updateOrCreate(leadData);
-    console.log('Lead result:', result);
+    console.log('📝 Lead operation complete');
     
     if (result.success) {
       res.status(result.isNew ? 201 : 200).json({

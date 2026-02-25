@@ -3,7 +3,7 @@ import sql from 'mssql';
 import database from '../config/database.js';
 import Assessment from '../models/Assessment.js';
 import UserActivity from '../models/UserActivity.js';
-import logger from '../utils/logger.js';
+import logger, { sanitizeLog } from '../utils/logger.js';
 import { cache, cacheMiddleware } from '../config/redis.js';
 import { doubleCsrfProtection } from '../middleware/csrf.js';
 
@@ -164,7 +164,7 @@ assessmentRouter.get('/user/:userId/history', cacheMiddleware(180), async (req, 
     const { userId } = req.params;
     const { page = 1, limit = 10, filter } = req.query;
     
-    console.log(`📋 Getting assessment history for user ${userId}, page ${page}`);
+    console.log(`📋 Getting assessment history for user ${sanitizeLog(userId)}, page ${sanitizeLog(page)}`);
     
     // Build WHERE clause with parameterized queries
     let whereClause = `WHERE lead_id = ?`;
@@ -264,7 +264,7 @@ assessmentRouter.get('/user/:userId/history', cacheMiddleware(180), async (req, 
 assessmentRouter.get('/user/:userId/summary', cacheMiddleware(300), async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log(`📊 Getting assessment summary for user ${userId}`);
+    console.log(`📊 Getting assessment summary for user ${sanitizeLog(userId)}`);
     
     const query = `
       SELECT 
@@ -348,7 +348,7 @@ assessmentRouter.get('/user/:userId/summary', cacheMiddleware(300), async (req, 
 assessmentRouter.get('/:assessmentId', cacheMiddleware(300), async (req, res) => {
   try {
     const { assessmentId } = req.params;
-    console.log(`🔍 Getting assessment details for ID ${assessmentId}`);
+    console.log(`🔍 Getting assessment details for ID ${sanitizeLog(assessmentId)}`);
     
     const query = `
       SELECT 

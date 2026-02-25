@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { generateAssessmentPDFBuffer } from './pdfService.js';
+import { sanitizeLog } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -336,7 +337,7 @@ export const sendAssessmentResults = async (userData, assessmentData) => {
   }
 
   try {
-    console.log('📧 Preparing to send assessment results email to:', userData.email);
+    console.log('📧 Preparing to send assessment results email to:', sanitizeLog(userData.email));
 
     // Generate PDF as buffer
     const pdfBuffer = await generateAssessmentPDFBuffer(userData, assessmentData);
@@ -576,7 +577,7 @@ export const sendWelcomeEmail = async (userData) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('✅ Welcome email sent to:', userData.email);
+    console.log('✅ Welcome email sent to:', sanitizeLog(userData.email));
   } catch (error) {
     console.error('❌ Error sending welcome email:', error);
   }

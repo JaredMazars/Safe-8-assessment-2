@@ -2,6 +2,7 @@ import express from 'express';
 import AssessmentResponse from '../models/AssessmentResponse.js';
 import { validateAssessmentResponse } from '../middleware/validation.js';
 import { doubleCsrfProtection } from '../middleware/csrf.js';
+import { sanitizeLog } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -9,9 +10,9 @@ const router = express.Router();
 router.post('/response', async (req, res) => {
   try {
     console.log('📝 Received response:');
-    console.log('leadUserId:', req.body.lead_user_id);
-    console.log('questionId:', req.body.question_id);
-    console.log('responseValue:', req.body.response_value);
+    console.log('leadUserId:', sanitizeLog(req.body.lead_user_id));
+    console.log('questionId:', sanitizeLog(req.body.question_id));
+    console.log('responseValue received');
 
     const { lead_user_id, question_id, response_value } = req.body;
 
