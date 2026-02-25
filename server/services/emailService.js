@@ -9,8 +9,8 @@ import { sanitizeLog } from '../utils/logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from project root
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load .env from server directory
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Logo path for attachments
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'forvis-mazars-logo.jpg');
