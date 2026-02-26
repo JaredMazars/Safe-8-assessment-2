@@ -395,7 +395,8 @@ leadRouter.post('/login', validateLeadLogin, async (req, res) => {
 
 // Export assessment as PDF (for users to download their own assessments)
 // MUST be before /:leadId route to avoid route matching conflicts
-leadRouter.post('/assessments/:assessmentId/export-pdf', async (req, res) => {
+// Registered as both GET and POST — frontend uses GET, legacy callers may use POST
+const exportPDFHandler = async (req, res) => {
   try {
     const { assessmentId } = req.params;
     const id = parseInt(assessmentId);
@@ -513,7 +514,11 @@ leadRouter.post('/assessments/:assessmentId/export-pdf', async (req, res) => {
       error: error.message
     });
   }
-});
+};
+
+// Register handler for both GET (frontend) and POST (legacy)
+leadRouter.get('/assessments/:assessmentId/export-pdf', exportPDFHandler);
+leadRouter.post('/assessments/:assessmentId/export-pdf', exportPDFHandler);
 
 // Email assessment results (for users to send their results via email)
 leadRouter.post('/assessments/:assessmentId/email-results', async (req, res) => {

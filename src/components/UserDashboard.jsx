@@ -158,6 +158,26 @@ function UserDashboard({ user, onLogout }) {
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
   };
 
+  // Send assessment results via email
+  const handleSendEmail = async (assessmentId) => {
+    const email = user.email;
+    if (!email) {
+      alert('No email address found for your account.');
+      return;
+    }
+    try {
+      const confirmed = window.confirm(`Send your assessment results to ${email}?`);
+      if (!confirmed) return;
+
+      await api.post(`/api/lead/assessments/${assessmentId}/email-results`, { email });
+      alert(`✅ Results sent to ${email}`);
+    } catch (error) {
+      console.error('❌ Error sending email:', error);
+      const msg = error.response?.data?.message || error.message || 'Failed to send email';
+      alert(`Failed to send email: ${msg}`);
+    }
+  };
+
   // Export assessment as PDF
   const handleExportPDF = async (assessmentId, contactName) => {
     try {
@@ -448,6 +468,13 @@ function UserDashboard({ user, onLogout }) {
                             >
                               <i className="fas fa-file-pdf"></i> Export
                             </button>
+                            <button
+                              className="btn-send-email"
+                              onClick={() => handleSendEmail(assessment.id)}
+                              title="Email Results"
+                            >
+                              <i className="fas fa-envelope"></i> Email
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -505,6 +532,12 @@ function UserDashboard({ user, onLogout }) {
                         onClick={() => handleExportPDF(assessment.id, user.contactName || user.contact_name || 'User')}
                       >
                         <i className="fas fa-file-pdf"></i> Export PDF
+                      </button>
+                      <button
+                        className="btn-send-email"
+                        onClick={() => handleSendEmail(assessment.id)}
+                      >
+                        <i className="fas fa-envelope"></i> Email Results
                       </button>
                     </div>
                   </div>

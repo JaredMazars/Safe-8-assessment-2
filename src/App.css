@@ -3529,7 +3529,8 @@ select.field-input {
 }
 
 .btn-view-details,
-.btn-export-pdf {
+.btn-export-pdf,
+.btn-send-email {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
@@ -3562,6 +3563,17 @@ select.field-input {
   background: #c41820;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(227, 27, 35, 0.3);
+}
+
+.btn-send-email {
+  background: #00539F;
+  color: var(--white);
+}
+
+.btn-send-email:hover {
+  background: #003d7a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 83, 159, 0.3);
 }
 
 /* Mobile Table Cards */

@@ -27,11 +27,14 @@ const createTransporter = () => {
 
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
+    port: parseInt(process.env.SMTP_PORT) || 465,   // 465/SSL works on Azure; 587/STARTTLS is blocked
+    secure: process.env.SMTP_SECURE !== 'false',     // true for 465, false only if explicitly overridden
     auth: {
       user: smtpUser,
       pass: smtpPass
+    },
+    tls: {
+      rejectUnauthorized: false                      // tolerate self-signed certs on restricted Azure egress
     }
   });
 };
