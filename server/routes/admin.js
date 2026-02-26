@@ -1104,23 +1104,23 @@ router.post('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) =>
             WHERE username = @username
           `);
         
-        // Send email with new credentials
-        try {
-          await emailService.sendEmail({
-            to: existing.email,
+        // Send restoration email in background (non-blocking)
+        const _restoreEmail = existing.email;
+        const _restoreUser = existing.username;
+        const _restorePass = tempPassword;
+        setImmediate(() => {
+          emailService.sendEmail({
+            to: _restoreEmail,
             subject: 'Admin Account Restored - SAFE-8',
             html: `
               <h2>Your Admin Account Has Been Restored</h2>
               <p>Your admin account for SAFE-8 has been restored.</p>
-              <p><strong>Username:</strong> ${existing.username}</p>
-              <p><strong>Temporary Password:</strong> ${tempPassword}</p>
+              <p><strong>Username:</strong> ${_restoreUser}</p>
+              <p><strong>Temporary Password:</strong> ${_restorePass}</p>
               <p>Please login and change your password immediately.</p>
             `
-          });
-          console.log('✅ Restoration email sent to:', existing.email);
-        } catch (emailError) {
-          console.error('❌ Failed to send restoration email:', emailError);
-        }
+          }).catch(err => console.error('❌ Failed to send restoration email:', err.message));
+        });
         
         return res.json({
           success: true,
@@ -1190,23 +1190,23 @@ router.post('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) =>
 
     console.log('✅ Inserted into admins table');
 
-    // Send email with credentials
-    console.log('📧 Attempting to send email to:', email);
-    try {
-      const emailResult = await emailService.sendEmail({
-        to: email,
+    // Send credentials email in background (non-blocking)
+    const _adminEmail = email, _adminUser = username, _adminName = full_name, _adminPass = tempPassword;
+    setImmediate(() => {
+      emailService.sendEmail({
+        to: _adminEmail,
         subject: 'Your Admin Account Has Been Created',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #00539F;">Admin Account Created</h2>
-            <p>Hello ${full_name || username},</p>
+            <p>Hello ${_adminName || _adminUser},</p>
             <p>Your admin account has been created. You can now log in to the admin dashboard.</p>
             
             <div style="background-color: #f8f9fa; padding: 20px; border-left: 4px solid #00539F; margin: 20px 0;">
               <h3 style="margin-top: 0; color: #00539F;">Login Credentials</h3>
-              <p><strong>Username:</strong> ${username}</p>
-              <p><strong>Email:</strong> ${email}</p>
-              <p><strong>Temporary Password:</strong> <code style="background: #fff; padding: 4px 8px; border: 1px solid #ddd;">${tempPassword}</code></p>
+              <p><strong>Username:</strong> ${_adminUser}</p>
+              <p><strong>Email:</strong> ${_adminEmail}</p>
+              <p><strong>Temporary Password:</strong> <code style="background: #fff; padding: 4px 8px; border: 1px solid #ddd;">${_adminPass}</code></p>
             </div>
             
             <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
@@ -1216,15 +1216,8 @@ router.post('/admins', authenticateAdmin, requireSuperAdmin, async (req, res) =>
             <p>If you have any questions, please contact the super administrator.</p>
           </div>
         `
-      });
-      console.log('✅ Email sent successfully to:', email);
-      console.log('📧 Email result:', emailResult);
-    } catch (emailError) {
-      console.error('❌ Failed to send admin credentials email:', emailError);
-      console.error('❌ Email error details:', emailError.message);
-      console.error('❌ Email stack:', emailError.stack);
-      // Don't fail the admin creation if email fails
-    }
+      }).then(r => console.log('✅ Admin credentials email sent')).catch(err => console.error('❌ Failed to send admin credentials email:', err.message));
+    });
 
     // Log activity
     await Admin.logActivity(req.admin.id, 'CREATE', 'admin', adminId, `Created admin: ${username}`, req.ip, req.headers['user-agent']);
@@ -1614,34 +1607,21 @@ router.post('/users', authenticateAdmin, async (req, res) => {
     console.log('📧 Contact name:', newUser.contact_name);
     console.log('📧 First name:', first_name);
     
-    // Send email with temporary password
-    try {
-      const emailData = {
-        email: newUser.email,
-        contact_name: newUser.contact_name,
-        first_name: first_name || newUser.contact_name.split(' ')[0],
-        company_name: newUser.company_name
-      };
-      
-      console.log('📧 Email data being sent to service:', JSON.stringify(emailData, null, 2));
-      
-      const emailResult = await emailService.sendAdminCreatedUserEmail(
-        emailData,
-        tempPassword
-      );
-      
-      console.log('📧 Email service result:', emailResult);
-      
-      if (emailResult.success) {
-        console.log('✅ Welcome email sent successfully to:', emailResult.recipient);
-      } else {
-        console.warn('⚠️ Welcome email failed but continuing:', emailResult.error);
-      }
-    } catch (emailError) {
-      console.error('❌ Error sending welcome email:', emailError);
-      console.error('❌ Email error details:', emailError.message);
-      // Continue anyway - user creation succeeded
-    }
+    // Send welcome email in background (non-blocking)
+    const _userEmailData = {
+      email: newUser.email,
+      contact_name: newUser.contact_name,
+      first_name: first_name || newUser.contact_name.split(' ')[0],
+      company_name: newUser.company_name
+    };
+    const _userTempPass = tempPassword;
+    setImmediate(() => {
+      emailService.sendAdminCreatedUserEmail(_userEmailData, _userTempPass)
+        .then(r => r.success
+          ? console.log('✅ Welcome email sent to:', _userEmailData.email)
+          : console.warn('⚠️ Welcome email failed:', r.error))
+        .catch(err => console.error('❌ Error sending welcome email:', err.message));
+    });
 
     console.log('📝 Logging admin activity...');
     

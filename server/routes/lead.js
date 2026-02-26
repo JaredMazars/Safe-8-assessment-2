@@ -95,20 +95,13 @@ leadRouter.post('/create', async (req, res) => {
     }
 
     if (result.success) {
-      // Send welcome email for new accounts
-      const isNew = true;
-      if (isNew) {
-        try {
-          await sendWelcomeEmail({
-            contact_name: contactName,
-            email: email,
-            company_name: companyName
-          });
-          logger.info('Welcome email sent', { email });
-        } catch (emailError) {
-          logger.warn('Welcome email failed (non-critical)', { error: emailError.message });
-        }
-      }
+      // Respond immediately - send welcome email in background (non-blocking)
+      const emailPayload = { contact_name: contactName, email: email, company_name: companyName };
+      setImmediate(() => {
+        sendWelcomeEmail(emailPayload)
+          .then(() => logger.info('Welcome email sent', { email }))
+          .catch(err => logger.warn('Welcome email failed (non-critical)', { error: err.message }));
+      });
       
       return res.status(200).json({
         success: true,
@@ -275,24 +268,22 @@ leadRouter.post('/submit-assessment', async (req, res) => {
     
     logger.info('Assessment saved', { assessmentId });
 
-    // Send email with assessment results
-    try {
-      const emailResult = await sendAssessmentResults(leadExists, {
-        overall_score: parseFloat(overall_score),
-        dimension_scores: pillar_scores || [],
-        insights: JSON.parse(insights_json),
-        assessment_type: assessment_type.toUpperCase(),
-        completed_at: new Date()
-      });
-      
-      if (emailResult.success) {
-        logger.info('Assessment results email sent', { email: leadExists.email });
-      } else {
-        logger.warn('Email send failed (non-critical)', { error: emailResult.error });
-      }
-    } catch (emailError) {
-      logger.warn('Email service error (continuing)', { error: emailError.message });
-    }
+    // Respond immediately - generate PDF and send email in background (non-blocking)
+    const emailLead = { ...leadExists };
+    const emailAssessment = {
+      overall_score: parseFloat(overall_score),
+      dimension_scores: pillar_scores || [],
+      insights: JSON.parse(insights_json),
+      assessment_type: assessment_type.toUpperCase(),
+      completed_at: new Date()
+    };
+    setImmediate(() => {
+      sendAssessmentResults(emailLead, emailAssessment)
+        .then(r => r.success
+          ? logger.info('Assessment results email sent', { email: emailLead.email })
+          : logger.warn('Email send failed (non-critical)', { error: r.error }))
+        .catch(err => logger.warn('Email service error (continuing)', { error: err.message }));
+    });
 
     res.json({
       success: true,
@@ -600,24 +591,27 @@ leadRouter.post('/assessments/:assessmentId/email-results', async (req, res) => 
       completed_at: assessment.completed_at || new Date()
     };
 
-    logger.info('Sending email with assessment results', { assessmentId: id, email: userData.email });
+    logger.info('Sending email with assessment results (background)', { assessmentId: id, email: userData.email });
 
-    // Send email using the email service
-    const emailResult = await sendAssessmentResults(userData, assessmentData);
+    // Fire email in background — respond instantly, don't block on SMTP
+    setImmediate(() => {
+      sendAssessmentResults(userData, assessmentData)
+        .then(emailResult => {
+          if (emailResult.success) {
+            logger.info('Background email sent successfully', { assessmentId: id });
+          } else {
+            logger.error('Background email failed', { assessmentId: id, error: emailResult.error });
+          }
+        })
+        .catch(err => {
+          logger.error('Background email threw an error', { assessmentId: id, error: err.message });
+        });
+    });
 
-    if (emailResult.success) {
-      logger.info('Email sent successfully', { assessmentId: id });
-      res.json({
-        success: true,
-        message: 'Assessment results sent to your email successfully'
-      });
-    } else {
-      logger.error('Failed to send email', { error: emailResult.error });
-      res.status(500).json({
-        success: false,
-        message: 'Failed to send email: ' + emailResult.error
-      });
-    }
+    res.json({
+      success: true,
+      message: 'Assessment results sent to your email successfully'
+    });
   } catch (error) {
     logger.error('Error sending assessment results email', { 
       error: error.message, 
@@ -698,23 +692,18 @@ leadRouter.post('/forgot-password', resetLimiter, async (req, res) => {
       });
     }
 
-    // Send reset email
-    try {
-      await sendPasswordResetEmail({
-        contact_name: result.lead.contact_name,
-        email: result.lead.email,
-        company_name: result.lead.company_name,
-        resetToken: result.resetToken
-      });
-      logger.info('Password reset email sent', { email });
-    } catch (emailError) {
-      logger.error('Failed to send reset email', { error: emailError.message });
-      // Still return success to prevent enumeration
-      return res.json({
-        success: true,
-        message: 'If an account exists with this email, a password reset link has been sent.'
-      });
-    }
+    // Send reset email in background - respond immediately
+    const resetPayload = {
+      contact_name: result.lead.contact_name,
+      email: result.lead.email,
+      company_name: result.lead.company_name,
+      resetToken: result.resetToken
+    };
+    setImmediate(() => {
+      sendPasswordResetEmail(resetPayload)
+        .then(() => logger.info('Password reset email sent', { email: result.lead.email }))
+        .catch(err => logger.error('Failed to send reset email', { error: err.message }));
+    });
 
     res.json({
       success: true,

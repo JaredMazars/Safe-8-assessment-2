@@ -31,8 +31,8 @@ const config = {
   },
   pool: {
     max: parseInt(process.env.DB_POOL_MAX || '10'),
-    min: parseInt(process.env.DB_POOL_MIN || '0'),
-    idleTimeoutMillis: 30000,
+    min: parseInt(process.env.DB_POOL_MIN || '2'), // Keep 2 warm connections on Azure to avoid cold-start latency
+    idleTimeoutMillis: 180000, // 3 min - below Azure's 4-min TCP idle reset to prevent stale connections
     acquireTimeoutMillis: 60000
   },
   connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '60') * 1000,
