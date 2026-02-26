@@ -15,45 +15,53 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 // Logo path for attachments
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'forvis-mazars-logo.jpg');
 
-// Create transporter with better error handling
-const createTransporter = () => {
+// Lazy transporter — created on first use so Azure App Service env vars are always available
+// (ES module imports are hoisted before dotenv.config() runs in index.js)
+let _transporter = null;
+let _transporterChecked = false;
+
+const getTransporter = () => {
+  if (_transporterChecked) return _transporter;
+  _transporterChecked = true;
+
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
 
   if (!smtpUser || !smtpPass) {
-    console.warn('⚠️  Email service: SMTP credentials not configured');
+    console.warn('⚠️  Email service: SMTP_USER/SMTP_PASS not set — emails disabled');
     return null;
   }
 
-  return nodemailer.createTransport({
+  const port = parseInt(process.env.SMTP_PORT) || 465;
+  const secure = process.env.SMTP_SECURE === 'false' ? false : (port === 465);
+
+  console.log(`📧 Creating SMTP transporter: ${process.env.SMTP_HOST || 'smtp.gmail.com'}:${port} secure=${secure} user=${smtpUser}`);
+
+  _transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT) || 465,   // 465/SSL works on Azure; 587/STARTTLS is blocked
-    secure: process.env.SMTP_SECURE !== 'false',     // true for 465, false only if explicitly overridden
-    auth: {
-      user: smtpUser,
-      pass: smtpPass
-    },
-    tls: {
-      rejectUnauthorized: false                      // tolerate self-signed certs on restricted Azure egress
-    }
+    port,
+    secure,
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
+    tls: { rejectUnauthorized: false }
   });
-};
 
-const transporter = createTransporter();
-
-// Verify connection only if transporter exists
-if (transporter) {
-  transporter.verify((error, success) => {
+  // Verify asynchronously — don't block module load
+  _transporter.verify((error) => {
     if (error) {
-      console.error('❌ Email service verification failed:', error.message);
-      console.log('ℹ️  Email service will attempt to send anyway...');
+      console.error('❌ SMTP verify failed:', error.code, error.message);
+      // Reset so next call retries
+      _transporterChecked = false;
+      _transporter = null;
     } else {
-      console.log('✅ Email service ready');
+      console.log('✅ SMTP transporter verified OK');
     }
   });
-} else {
-  console.log('ℹ️  Email service disabled (no credentials configured)');
-}
+
+  return _transporter;
+};
 
 /**
  * Generic email sending function
@@ -64,7 +72,8 @@ if (transporter) {
  * @param {string} [options.from] - Sender email (optional, uses default)
  * @returns {Promise<Object>} - Email send result
  */
-const sendEmail = async ({ to, subject, html, from }) => {
+const sendEmail = async ({ to, subject, html, from, attachments }) => {
+  const transporter = getTransporter();
   if (!transporter) {
     console.warn('⚠️  Email service not configured - skipping email send');
     return { success: false, message: 'Email service not configured' };
@@ -74,7 +83,8 @@ const sendEmail = async ({ to, subject, html, from }) => {
     from: from || process.env.SMTP_FROM || process.env.SMTP_USER,
     to,
     subject,
-    html
+    html,
+    ...(attachments ? { attachments } : {})
   };
 
   try {
@@ -82,8 +92,8 @@ const sendEmail = async ({ to, subject, html, from }) => {
     console.log('✅ Email sent successfully:', result.messageId);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error('❌ Failed to send email:', error.message);
-    throw error;
+    console.error('❌ Failed to send email:', error.message, error.code);
+    return { success: false, error: error.message };
   }
 };
 
@@ -334,6 +344,7 @@ const generateAssessmentEmailHTML = (userData, assessmentData) => {
  * Send assessment results email with PDF attachment
  */
 export const sendAssessmentResults = async (userData, assessmentData) => {
+  const transporter = getTransporter();
   if (!transporter) {
     console.log('ℹ️  Email sending skipped (service not configured)');
     return { success: false, error: 'Email service not configured' };
@@ -344,27 +355,24 @@ export const sendAssessmentResults = async (userData, assessmentData) => {
 
     // Generate PDF as buffer
     const pdfBuffer = await generateAssessmentPDFBuffer(userData, assessmentData);
-    
+
+    const attachments = [
+      {
+        filename: `SAFE-8_Assessment_Report_${userData.contact_name.replace(/\s+/g, '_')}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ];
+    try {
+      if (fs.existsSync(LOGO_PATH)) attachments.push({ filename: 'logo.jpg', path: LOGO_PATH, cid: 'forvismazarslogo' });
+    } catch (e) { /* logo optional */ }
+
     const mailOptions = {
-      from: {
-        name: 'Forvis Mazars - SAFE-8 Platform',
-        address: process.env.SMTP_USER
-      },
+      from: { name: 'Forvis Mazars - SAFE-8 Platform', address: process.env.SMTP_USER },
       to: userData.email,
       subject: `Your SAFE-8 ${assessmentData.assessment_type} Assessment Results - ${assessmentData.overall_score.toFixed(1)}%`,
       html: generateAssessmentEmailHTML(userData, assessmentData),
-      attachments: [
-        {
-          filename: `SAFE-8_Assessment_Report_${userData.contact_name.replace(/\s+/g, '_')}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        },
-        {
-          filename: 'logo.jpg',
-          path: LOGO_PATH,
-          cid: 'forvismazarslogo'
-        }
-      ]
+      attachments
     };
 
     const info = await transporter.sendMail(mailOptions);
@@ -388,10 +396,21 @@ export const sendAssessmentResults = async (userData, assessmentData) => {
  * Designed according to Forvis Mazars branding guidelines
  */
 export const sendWelcomeEmail = async (userData) => {
+  const transporter = getTransporter();
   if (!transporter) {
     console.log('ℹ️  Welcome email skipped (service not configured)');
-    return { success: false };
+    return { success: false, error: 'Email service not configured' };
   }
+
+  // Logo attachment — optional, don't fail if file missing
+  const logoAttachments = [];
+  try {
+    if (fs.existsSync(LOGO_PATH)) {
+      logoAttachments.push({ filename: 'logo.jpg', path: LOGO_PATH, cid: 'forvismazarslogo' });
+    } else {
+      console.warn('⚠️  Logo file not found at:', LOGO_PATH, '— sending email without logo');
+    }
+  } catch (e) { /* ignore */ }
 
   try {
     const mailOptions = {
@@ -401,6 +420,7 @@ export const sendWelcomeEmail = async (userData) => {
       },
       to: userData.email,
       subject: 'Welcome to SAFE-8 Assessment Platform',
+      attachments: logoAttachments,
       html: `
 <!DOCTYPE html>
 <html lang="en">
@@ -570,19 +590,14 @@ export const sendWelcomeEmail = async (userData) => {
 </body>
 </html>
       `,
-      attachments: [
-        {
-          filename: 'logo.jpg',
-          path: LOGO_PATH,
-          cid: 'forvismazarslogo'
-        }
-      ]
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log('✅ Welcome email sent to:', sanitizeLog(userData.email));
+    const result = await transporter.sendMail(mailOptions);
+    console.log('✅ Welcome email sent to:', sanitizeLog(userData.email), 'msgId:', result.messageId);
+    return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error('❌ Error sending welcome email:', error);
+    console.error('❌ Error sending welcome email:', error.code, error.message);
+    return { success: false, error: error.message };
   }
 };
 
@@ -591,6 +606,7 @@ export const sendWelcomeEmail = async (userData) => {
  * Designed according to Forvis Mazars branding guidelines
  */
 export const sendPasswordResetEmail = async (userData) => {
+  const transporter = getTransporter();
   if (!transporter) {
     console.log('ℹ️  Password reset email skipped (service not configured)');
     return { success: false, error: 'Email service not configured' };
@@ -764,14 +780,10 @@ export const sendPasswordResetEmail = async (userData) => {
 </body>
 </html>
       `,
-      attachments: [
-        {
-          filename: 'logo.jpg',
-          path: LOGO_PATH,
-          cid: 'forvismazarslogo'
-        }
-      ]
     };
+    try {
+      if (fs.existsSync(LOGO_PATH)) mailOptions.attachments = [{ filename: 'logo.jpg', path: LOGO_PATH, cid: 'forvismazarslogo' }];
+    } catch (e) { /* logo optional */ }
 
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Password reset email sent:', info.messageId);
@@ -793,6 +805,7 @@ export const sendPasswordResetEmail = async (userData) => {
  * Send email to admin-created user with temporary password
  */
 export const sendAdminCreatedUserEmail = async (userData, tempPassword) => {
+  const transporter = getTransporter();
   if (!transporter) {
     console.log('ℹ️  Admin user email skipped (service not configured)');
     return { success: false };
@@ -1012,14 +1025,10 @@ export const sendAdminCreatedUserEmail = async (userData, tempPassword) => {
 </body>
 </html>
       `,
-      attachments: [
-        {
-          filename: 'logo.jpg',
-          path: LOGO_PATH,
-          cid: 'forvismazarslogo'
-        }
-      ]
     };
+    try {
+      if (fs.existsSync(LOGO_PATH)) mailOptions.attachments = [{ filename: 'logo.jpg', path: LOGO_PATH, cid: 'forvismazarslogo' }];
+    } catch (e) { /* logo optional */ }
 
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Admin-created user email sent successfully:', info.messageId);
