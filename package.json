@@ -23,6 +23,7 @@
     "test:e2e:ci": "start-server-and-test 'npm run dev' http://localhost:5174 'npm run cypress:run'"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.2.0",
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
     "pdfkit": "^0.17.2",
