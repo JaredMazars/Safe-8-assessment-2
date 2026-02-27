@@ -32,13 +32,14 @@ const getTransporter = () => {
     return null;
   }
 
-  const port = parseInt(process.env.SMTP_PORT) || 465;
-  const secure = process.env.SMTP_SECURE === 'false' ? false : (port === 465);
+  // Always use port 465 / SSL on Azure — port 587 is blocked by Azure App Service
+  const port = 465;
+  const secure = true;
 
-  console.log(`📧 Creating SMTP transporter: ${process.env.SMTP_HOST || 'smtp.gmail.com'}:${port} secure=${secure} user=${smtpUser}`);
+  console.log(`📧 Creating SMTP transporter: smtp.gmail.com:${port} secure=${secure} user=${smtpUser}`);
 
   _transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: 'smtp.gmail.com',
     port,
     secure,
     auth: { user: smtpUser, pass: smtpPass },
@@ -48,13 +49,10 @@ const getTransporter = () => {
     tls: { rejectUnauthorized: false }
   });
 
-  // Verify asynchronously — don't block module load
+  // Log verify result but never block or reset — sendMail will surface real errors
   _transporter.verify((error) => {
     if (error) {
       console.error('❌ SMTP verify failed:', error.code, error.message);
-      // Reset so next call retries
-      _transporterChecked = false;
-      _transporter = null;
     } else {
       console.log('✅ SMTP transporter verified OK');
     }

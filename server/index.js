@@ -369,6 +369,70 @@ app.get('/health/ping', (req, res) => {
   res.status(200).send('OK');
 });
 
+// ✅ Email diagnostic endpoint — shows exact config & attempts live SMTP test
+// Access: https://<your-azure-app>.azurewebsites.net/health/email
+app.get('/health/email', async (req, res) => {
+  const nodemailer = (await import('nodemailer')).default;
+
+  const cfg = {
+    SMTP_HOST: process.env.SMTP_HOST || '(not set — will use smtp.gmail.com)',
+    SMTP_PORT: process.env.SMTP_PORT || '(not set — will use 465)',
+    SMTP_SECURE: process.env.SMTP_SECURE || '(not set)',
+    SMTP_USER: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 4)}****` : '❌ NOT SET',
+    SMTP_PASS: process.env.SMTP_PASS ? `[${process.env.SMTP_PASS.length} chars]` : '❌ NOT SET',
+    NODE_ENV: process.env.NODE_ENV,
+  };
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return res.status(500).json({ ok: false, config: cfg, error: 'SMTP_USER or SMTP_PASS missing from App Settings' });
+  }
+
+  const port = parseInt(process.env.SMTP_PORT) || 465;
+  const secure = process.env.SMTP_SECURE === 'false' ? false : (port === 465);
+
+  const results = [];
+
+  // Test both port 465 and 587 so we can see which Azure allows
+  for (const [p, s] of [[465, true], [587, false]]) {
+    const t = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: p, secure: s,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 8000,
+      tls: { rejectUnauthorized: false }
+    });
+    try {
+      await new Promise((resolve, reject) => t.verify((err) => err ? reject(err) : resolve()));
+      results.push({ port: p, secure: s, status: '✅ CONNECTED' });
+    } catch (err) {
+      results.push({ port: p, secure: s, status: `❌ FAILED`, code: err.code, message: err.message });
+    }
+  }
+
+  const working = results.find(r => r.status.startsWith('✅'));
+
+  let sendResult = null;
+  if (working) {
+    const t = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: working.port, secure: working.secure,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 15000, tls: { rejectUnauthorized: false }
+    });
+    try {
+      const info = await t.sendMail({
+        from: `"SAFE-8 Diag" <${process.env.SMTP_USER}>`,
+        to: process.env.SMTP_USER,
+        subject: `Azure SMTP Test ${new Date().toISOString()}`,
+        html: '<h2>✅ Email working on Azure</h2>'
+      });
+      sendResult = { ok: true, messageId: info.messageId, port: working.port };
+    } catch (err) {
+      sendResult = { ok: false, error: err.message, code: err.code };
+    }
+  }
+
+  res.json({ ok: !!working, config: cfg, portTests: results, sendResult });
+});
+
 // ✅ Detailed health check endpoint (includes DB connection check)
 app.get('/health', async (req, res) => {
   const health = {
