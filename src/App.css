@@ -1,3 +1,87 @@
+/* ========================================
+   HALYARD FONT – FORVIS MAZARS BRAND FONT
+   Place licensed .woff2 files in /public/fonts/
+   Halyard Text  → body / UI copy
+   Halyard Display → headings / display
+   ======================================== */
+@font-face {
+  font-family: 'Halyard Text';
+  src: url('/fonts/HalyardText-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Text';
+  src: url('/fonts/HalyardText-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Text';
+  src: url('/fonts/HalyardText-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Text';
+  src: url('/fonts/HalyardText-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Text';
+  src: url('/fonts/HalyardText-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Halyard Display';
+  src: url('/fonts/HalyardDisplay-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Forvis Mazars Official Brand Colors - 100% Compliant */
 :root {
   /* Primary Brand Colors */
@@ -22,6 +106,7 @@
   /* Semantic Colors */
   --error-red: #E31B23;
   --success-green: #00A651;
+  --accent-green: #00C060;
   --warning-orange: #F7941D;
   --info-blue: #0072CE;
   
@@ -72,12 +157,17 @@
 }
 
 body {
-  font-family: 'Montserrat', 'Proxima Nova', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-family: 'Halyard Text', Arial, sans-serif;
   background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-200) 100%);
   color: var(--gray-900);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Halyard Display for all headings – Forvis Mazars brand standard */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Halyard Display', 'Halyard Text', Arial, sans-serif;
 }
 
 #root {
@@ -1908,7 +1998,7 @@ select.field-input {
   font-weight: 700;
   color: var(--white) !important;
   margin: 0 0 0.25rem 0;
-  font-family: 'Montserrat', 'Proxima Nova', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-family: 'Halyard Display', 'Halyard Text', Arial, sans-serif;
   letter-spacing: -0.5px;
 }
 
@@ -3524,23 +3614,25 @@ select.field-input {
 
 .action-buttons {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .btn-view-details,
 .btn-export-pdf,
 .btn-send-email {
-  padding: 0.5rem 1rem;
+  padding: 0.35rem 0.6rem;
   border: none;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-view-details {
@@ -4109,6 +4201,7 @@ select.field-input {
 }
 
 .pillar-bar {
+  width: 100%;
   height: 8px;
   background: var(--light-gray);
   border-radius: 10px;
@@ -4119,15 +4212,15 @@ select.field-input {
 .pillar-bar-fill {
   height: 100%;
   border-radius: 10px;
-  transition: width 0.5s ease-out;
+  transition: width 0.6s ease-out;
 }
 
 .pillar-bar-fill.fill-score-excellent {
-  background: linear-gradient(90deg, var(--success-green), var(--accent-green));
+  background: linear-gradient(90deg, #00A651, #00C060);
 }
 
 .pillar-bar-fill.fill-score-good {
-  background: linear-gradient(90deg, var(--secondary-blue), var(--accent-blue));
+  background: linear-gradient(90deg, #0072CE, #1E88E5);
 }
 
 .pillar-bar-fill.fill-score-needs-focus {

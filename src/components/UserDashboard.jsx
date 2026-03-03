@@ -16,7 +16,6 @@ function UserDashboard({ user, onLogout }) {
   const [filterType, setFilterType] = useState('all');
   const [historyLoading, setHistoryLoading] = useState(false);
   const [assessmentTypes, setAssessmentTypes] = useState([]);
-
   // Logout handler
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -466,7 +465,7 @@ function UserDashboard({ user, onLogout }) {
                               onClick={() => handleExportPDF(assessment.id, user.contactName || user.contact_name || 'User')}
                               title="Export PDF"
                             >
-                              <i className="fas fa-file-pdf"></i> Export
+                              <i className="fas fa-file-pdf"></i> PDF
                             </button>
                             <button
                               className="btn-send-email"
@@ -614,7 +613,7 @@ function UserDashboard({ user, onLogout }) {
                           <div className="pillar-bar">
                             <div 
                               className={`pillar-bar-fill fill-${getScoreColor(pillar.score)}`}
-                              style={{ width: `${pillar.score}%` }}
+                              style={{ width: `${parseFloat(pillar.score) || 0}%` }}
                             ></div>
                           </div>
                           <div className="pillar-label">{getScoreLabel(pillar.score)}</div>
