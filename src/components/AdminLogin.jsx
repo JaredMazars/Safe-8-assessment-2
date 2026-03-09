@@ -89,7 +89,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
           <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
             <i className="fas fa-shield-alt" style={{ fontSize: '3.5rem', opacity: '0.9' }}></i>
           </div>
-          <h1 className="main-title">Admin Portal</h1>
+          <h1 className="main-title">Login to Your Account</h1>
           <p className="subtitle">Secure access for authorized personnel</p>
         </div>
 
@@ -106,7 +106,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
             <div className="form-group" style={{ marginBottom: '1.75rem' }}>
               <label htmlFor="username" className="form-label" style={{ marginBottom: '0.75rem' }}>
                 <i className="fas fa-user" style={{ marginRight: '0.5rem' }}></i>
-                Username or Email
+                Email or Username
               </label>
               <input
                 type="text"
@@ -115,7 +115,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
                 value={formData.username}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Enter your username"
+                placeholder="Enter your email or username"
                 required
                 autoFocus
                 autoComplete="username"
@@ -123,10 +123,19 @@ const AdminLogin = ({ onLoginSuccess }) => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password" className="form-label" style={{ marginBottom: '0.75rem' }}>
-                <i className="fas fa-lock" style={{ marginRight: '0.5rem' }}></i>
-                Password
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <label htmlFor="password" className="form-label" style={{ marginBottom: 0 }}>
+                  <i className="fas fa-lock" style={{ marginRight: '0.5rem' }}></i>
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.875rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                >
+                  Forgot your password?
+                </button>
+              </div>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -152,33 +161,76 @@ const AdminLogin = ({ onLoginSuccess }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="form-actions" style={{ paddingTop: '2.5rem', marginTop: '2.5rem' }}>
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="btn-back-home"
-              style={{ width: 'fit-content' }}
-            >
-              <i className="fas fa-arrow-left"></i>
-              Back to Home
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-continue"
-            >
-              {isLoading ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i>
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-sign-in-alt"></i>
-                  Sign In
-                </>
-              )}
-            </button>
+          <div style={{ paddingTop: '2.5rem', marginTop: '2.5rem', borderTop: '2px solid var(--medium-gray)' }}>
+            {/* Primary actions row */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/register-account')}
+                style={{
+                  flex: 1,
+                  padding: '0.85rem 1.25rem',
+                  background: 'transparent',
+                  border: '2px solid var(--fm-primary)',
+                  borderRadius: '6px',
+                  color: 'var(--fm-primary)',
+                  fontSize: '0.9375rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = 'var(--fm-primary)'; e.currentTarget.style.color = 'white'; }}
+                onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--fm-primary)'; }}
+              >
+                <i className="fas fa-user-plus"></i>
+                Create Account
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-continue"
+                style={{ flex: 1 }}
+              >
+                {isLoading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-tachometer-alt"></i>
+                    Access Dashboard
+                  </>
+                )}
+              </button>
+            </div>
+            {/* Back link */}
+            <div style={{ textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-light)',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  textDecoration: 'underline',
+                  padding: 0
+                }}
+              >
+                <i className="fas fa-arrow-left"></i>
+                Back to Home
+              </button>
+            </div>
           </div>
         </form>
 

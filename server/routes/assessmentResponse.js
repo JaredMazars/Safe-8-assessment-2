@@ -2,17 +2,13 @@ import express from 'express';
 import AssessmentResponse from '../models/AssessmentResponse.js';
 import { validateAssessmentResponse } from '../middleware/validation.js';
 import { doubleCsrfProtection } from '../middleware/csrf.js';
-import { sanitizeLog } from '../utils/logger.js';
+import { sanitizeLog, default as logger } from '../utils/logger.js';
 
 const router = express.Router();
 
 // Save individual question response (NO CSRF - Phase 2: Frontend integration pending)
 router.post('/response', async (req, res) => {
   try {
-    console.log('📝 Received response:');
-    console.log('leadUserId:', sanitizeLog(req.body.lead_user_id));
-    console.log('questionId:', sanitizeLog(req.body.question_id));
-    console.log('responseValue received');
 
     const { lead_user_id, question_id, response_value } = req.body;
 
@@ -39,16 +35,15 @@ router.post('/response', async (req, res) => {
     });
 
     if (result.success) {
-      console.log(`✅ Response ${result.isNew ? 'created' : 'updated'} successfully`);
+      logger.debug('Response saved', { isNew: result.isNew });
     }
 
     res.json(result);
   } catch (error) {
-    console.error('Error saving response:', error);
+    logger.error('Error saving response', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to save response',
-      error: error.message
+      message: 'Failed to save response'
     });
   }
 });
@@ -64,11 +59,10 @@ router.get('/responses/:userId', async (req, res) => {
       responses
     });
   } catch (error) {
-    console.error('Error getting responses:', error);
+    logger.error('Error getting responses', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to get responses',
-      error: error.message
+      message: 'Failed to get responses'
     });
   }
 });
@@ -87,11 +81,10 @@ router.get('/responses/:userId/:assessmentType', async (req, res) => {
       responses
     });
   } catch (error) {
-    console.error('Error getting assessment responses:', error);
+    logger.error('Error getting assessment responses', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to get assessment responses',
-      error: error.message
+      message: 'Failed to get assessment responses'
     });
   }
 });
@@ -110,11 +103,10 @@ router.get('/score/:userId/:assessmentType', async (req, res) => {
       ...scoreData
     });
   } catch (error) {
-    console.error('Error calculating score:', error);
+    logger.error('Error calculating score', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to calculate score',
-      error: error.message
+      message: 'Failed to calculate score'
     });
   }
 });
@@ -129,11 +121,10 @@ router.get('/global-average', async (req, res) => {
       average: result.average || 0
     });
   } catch (error) {
-    console.error('Error getting global average:', error);
+    logger.error('Error getting global average', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to get global average',
-      error: error.message
+      message: 'Failed to get global average'
     });
   }
 });
@@ -149,11 +140,10 @@ router.delete('/responses/:userId/:assessmentType?', async (req, res) => {
     
     res.json(result);
   } catch (error) {
-    console.error('Error deleting responses:', error);
+    logger.error('Error deleting responses', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to delete responses',
-      error: error.message
+      message: 'Failed to delete responses'
     });
   }
 });

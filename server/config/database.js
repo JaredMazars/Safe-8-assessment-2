@@ -23,7 +23,7 @@ const config = {
   database: process.env.DB_NAME,
   port: parseInt(process.env.DB_PORT || '1433'),
   options: {
-    encrypt: process.env.DB_ENCRYPT === 'yes', // Azure SQL requires encryption
+    encrypt: process.env.DB_ENCRYPT !== 'no', // SECURITY FIX: default TRUE — Azure SQL requires TLS
     trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'yes',
     enableArithAbort: true,
     connectTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '60') * 1000,

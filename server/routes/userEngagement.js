@@ -1,6 +1,6 @@
 import express from 'express';
 import UserEngagementStats from '../models/UserEngagementStats.js';
-import { sanitizeLog } from '../utils/logger.js';
+import { sanitizeLog, default as logger } from '../utils/logger.js';
 
 const router = express.Router();
 
@@ -9,31 +9,28 @@ router.get('/dashboard/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log(`📊 Fetching dashboard summary for user ${sanitizeLog(userId)}`);
+    logger.debug('Fetching dashboard summary', { userId: sanitizeLog(userId) });
     
     const dashboardData = await UserEngagementStats.getDashboardSummary(userId);
     
     if (!dashboardData) {
-      console.log(`❌ No dashboard data found for user ${sanitizeLog(userId)}`);
+      logger.debug('No dashboard data found', { userId: sanitizeLog(userId) });
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
-    console.log('✅ Dashboard data retrieved successfully');
+    logger.debug('Dashboard data retrieved');
     res.json({
       success: true,
       data: dashboardData
     });
   } catch (error) {
-    console.error('❌ Error fetching dashboard summary:', error);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
+    logger.error('Error fetching dashboard summary', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch dashboard summary',
-      error: error.message
+      message: 'Failed to fetch dashboard summary'
     });
   }
 });
@@ -43,7 +40,7 @@ router.get('/stats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log(`📈 Fetching user stats for user ${sanitizeLog(userId)}`);
+    logger.debug('Fetching user stats', { userId: sanitizeLog(userId) });
     
     const stats = await UserEngagementStats.getUserStats(userId);
     
@@ -59,7 +56,7 @@ router.get('/stats/:userId', async (req, res) => {
       data: stats
     });
   } catch (error) {
-    console.error('❌ Error fetching user stats:', error);
+    logger.error('Error fetching user stats', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user statistics'
@@ -73,7 +70,7 @@ router.get('/progress/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit } = req.query;
     
-    console.log(`📋 Fetching assessment progress for user ${sanitizeLog(userId)}`);
+    logger.debug('Fetching assessment progress', { userId: sanitizeLog(userId) });
     
     const progress = await UserEngagementStats.getAssessmentProgress(userId, limit ? parseInt(limit) : 10);
 
@@ -82,7 +79,7 @@ router.get('/progress/:userId', async (req, res) => {
       data: progress
     });
   } catch (error) {
-    console.error('❌ Error fetching assessment progress:', error);
+    logger.error('Error fetching assessment progress', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch assessment progress'
@@ -102,7 +99,8 @@ router.post('/update-stats/:userId', async (req, res) => {
       industry
     } = req.body;
     
-    console.log(`🔄 Updating stats for user ${sanitizeLog(userId)} with assessment data:`, {
+    logger.debug('Updating stats', {
+      userId: sanitizeLog(userId),
       assessment_type: sanitizeLog(assessment_type),
       overall_score: sanitizeLog(overall_score),
       industry: sanitizeLog(industry)
@@ -128,11 +126,10 @@ router.post('/update-stats/:userId', async (req, res) => {
       message: 'User statistics updated successfully'
     });
   } catch (error) {
-    console.error('❌ Error updating user stats:', error);
+    logger.error('Error updating user stats', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to update user statistics',
-      error: error.message
+      message: 'Failed to update user statistics'
     });
   }
 });
@@ -142,7 +139,7 @@ router.post('/performance-tracking', async (req, res) => {
   try {
     const { userId, assessmentId, dimensionScores } = req.body;
     
-    console.log(`📊 Creating performance tracking for user ${sanitizeLog(userId)}, assessment ${sanitizeLog(assessmentId)}`);
+    logger.debug('Creating performance tracking', { userId: sanitizeLog(userId), assessmentId: sanitizeLog(assessmentId) });
     
     await UserEngagementStats.createPerformanceTracking(userId, assessmentId, dimensionScores);
 
@@ -151,7 +148,7 @@ router.post('/performance-tracking', async (req, res) => {
       message: 'Performance tracking created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating performance tracking:', error);
+    logger.error('Error creating performance tracking', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to create performance tracking'
@@ -164,7 +161,7 @@ router.get('/risks/:userId/:assessmentId?', async (req, res) => {
   try {
     const { userId, assessmentId } = req.params;
     
-    console.log(`⚠️ Fetching risks for user ${sanitizeLog(userId)}${assessmentId ? `, assessment ${sanitizeLog(assessmentId)}` : ''}`);
+    logger.debug('Fetching user risks', { userId: sanitizeLog(userId) });
     
     const risks = await UserEngagementStats.getUserRisks(userId, assessmentId);
 
@@ -173,7 +170,7 @@ router.get('/risks/:userId/:assessmentId?', async (req, res) => {
       data: risks
     });
   } catch (error) {
-    console.error('❌ Error fetching user risks:', error);
+    logger.error('Error fetching user risks', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user risks'
@@ -186,7 +183,7 @@ router.post('/generate-risks', async (req, res) => {
   try {
     const { userId, assessmentId } = req.body;
     
-    console.log(`🎯 Generating risk assessment for user ${sanitizeLog(userId)}, assessment ${sanitizeLog(assessmentId)}`);
+    logger.debug('Generating risk assessment', { userId: sanitizeLog(userId), assessmentId: sanitizeLog(assessmentId) });
     
     await UserEngagementStats.generateRiskAssessment(userId, assessmentId);
 
@@ -195,7 +192,7 @@ router.post('/generate-risks', async (req, res) => {
       message: 'Risk assessment generated successfully'
     });
   } catch (error) {
-    console.error('❌ Error generating risk assessment:', error);
+    logger.error('Error generating risk assessment', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to generate risk assessment'

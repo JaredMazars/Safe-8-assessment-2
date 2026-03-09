@@ -4,6 +4,7 @@ import Assessment from '../models/Assessment.js';
 import UserActivity from '../models/UserActivity.js';
 import database from '../config/database.js';
 import { validateLeadForm, validateLeadLogin } from '../middleware/validation.js';
+import { authenticateAdmin } from '../middleware/auth.js';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendAssessmentResults } from '../services/emailService.js';
 import { generateAssessmentPDFBuffer } from '../services/pdfService.js';
 import rateLimit from 'express-rate-limit';
@@ -34,7 +35,7 @@ leadRouter.get('/test', (req, res) => {
 });
 
 // Create a new lead
-leadRouter.post('/create', async (req, res) => {
+leadRouter.post('/create', validateLeadForm, async (req, res) => {
   logger.info('Lead creation request received', { email: req.body.email, company: req.body.companyName });
   
   try {
@@ -119,17 +120,16 @@ leadRouter.post('/create', async (req, res) => {
     }
 
   } catch (error) {
-    logger.error('Error in lead creation', { message: error.message, stack: error.stack });
+    logger.error('Error in lead creation', { message: error.message });
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error.message
+      message: 'Internal server error'
     });
   }
 });
 
-// Get all leads
-leadRouter.get('/', async (req, res) => {
+// Get all leads — admin only
+leadRouter.get('/', authenticateAdmin, async (req, res) => {
   try {
     const leads = await Lead.getAll();
     logger.info('Retrieved leads', { count: leads.length });
@@ -156,8 +156,7 @@ leadRouter.get('/', async (req, res) => {
     logger.error('Error fetching leads', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch leads',
-      error: error.message
+      message: 'Failed to fetch leads'
     });
   }
 });
@@ -294,11 +293,10 @@ leadRouter.post('/submit-assessment', async (req, res) => {
     });
 
   } catch (error) {
-    logger.error('Error submitting assessment', { error: error.message, stack: error.stack });
+    logger.error('Error submitting assessment', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to submit assessment',
-      error: error.message
+      message: 'Failed to submit assessment'
     });
   }
 });
@@ -387,8 +385,7 @@ leadRouter.post('/login', validateLeadLogin, async (req, res) => {
     logger.error('Error during login', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to log in',
-      error: error.message
+      message: 'Failed to log in'
     });
   }
 });
@@ -503,16 +500,8 @@ const exportPDFHandler = async (req, res) => {
     // Send PDF buffer
     res.send(pdfBuffer);
   } catch (error) {
-    logger.error('Error exporting assessment PDF', { 
-      error: error.message, 
-      stack: error.stack,
-      assessmentId: req.params.assessmentId 
-    });
-    res.status(500).json({
-      success: false,
-      message: 'Error exporting assessment PDF',
-      error: error.message
-    });
+    logger.error('Error exporting assessment PDF', { error: error.message, assessmentId: req.params.assessmentId });
+    res.status(500).json({ success: false, message: 'Error exporting assessment PDF' });
   }
 };
 
@@ -553,10 +542,10 @@ leadRouter.post('/assessments/:assessmentId/email-results', async (req, res) => 
       });
     }
 
-    // Prepare user data
+    // SECURITY FIX: always send to the assessment's registered email — never to an attacker-supplied address
     const userData = {
       contact_name: assessment.contact_name,
-      email: email || assessment.email,
+      email: assessment.email,
       company_name: assessment.company_name,
       job_title: assessment.job_title
     };
@@ -618,21 +607,13 @@ leadRouter.post('/assessments/:assessmentId/email-results', async (req, res) => 
       message: 'Assessment results sent to your email successfully'
     });
   } catch (error) {
-    logger.error('Error sending assessment results email', { 
-      error: error.message, 
-      stack: error.stack,
-      assessmentId: req.params.assessmentId 
-    });
-    res.status(500).json({
-      success: false,
-      message: 'Error sending email',
-      error: error.message
-    });
+    logger.error('Error sending assessment results email', { error: error.message, assessmentId: req.params.assessmentId });
+    res.status(500).json({ success: false, message: 'Error sending email' });
   }
 });
 
-// Get lead by ID
-leadRouter.get('/:leadId', async (req, res) => {
+// Get lead by ID — admin only
+leadRouter.get('/:leadId', authenticateAdmin, async (req, res) => {
   try {
     const { leadId } = req.params;
     const lead = await Lead.getById(leadId);
@@ -664,11 +645,7 @@ leadRouter.get('/:leadId', async (req, res) => {
 
   } catch (error) {
     logger.error('Error fetching lead', { error: error.message });
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch lead',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch lead' });
   }
 });
 
@@ -717,11 +694,7 @@ leadRouter.post('/forgot-password', resetLimiter, async (req, res) => {
 
   } catch (error) {
     logger.error('Error in forgot-password', { error: error.message });
-    res.status(500).json({
-      success: false,
-      message: 'Failed to process password reset request',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to process password reset request' });
   }
 });
 
@@ -766,11 +739,7 @@ leadRouter.post('/reset-password', async (req, res) => {
 
   } catch (error) {
     logger.error('Error in reset-password', { error: error.message });
-    res.status(500).json({
-      success: false,
-      message: 'Failed to reset password',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to reset password' });
   }
 });
 
@@ -812,8 +781,9 @@ leadRouter.post('/verify-reset-token', async (req, res) => {
 
 /**
  * Change password (forced change after temp password)
+ * SECURITY FIX: CSRF protected
  */
-leadRouter.post('/change-password', async (req, res) => {
+leadRouter.post('/change-password', doubleCsrfProtection, async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body;
 
@@ -881,11 +851,8 @@ leadRouter.post('/change-password', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error changing password:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to change password'
-    });
+    logger.error('Error changing password', { error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to change password' });
   }
 });
 

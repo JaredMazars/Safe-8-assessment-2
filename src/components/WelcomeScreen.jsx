@@ -285,13 +285,22 @@ const WelcomeScreen = ({
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => setShowLoginForm(!showLoginForm)}
-                className="btn-login-toggle"
-              >
-                <i className="fas fa-sign-in-alt"></i>
-                {showLoginForm ? 'Cancel' : 'Login'}
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => navigate('/register-account')}
+                  className="btn-login-toggle"
+                >
+                  <i className="fas fa-user-plus"></i>
+                  Create Account
+                </button>
+                <button
+                  onClick={() => setShowLoginForm(!showLoginForm)}
+                  className="btn-login-toggle"
+                >
+                  <i className="fas fa-sign-in-alt"></i>
+                  {showLoginForm ? 'Cancel' : 'Login'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -300,13 +309,22 @@ const WelcomeScreen = ({
             
             {/* Mobile-only Login Button - appears after title */}
             {!userData && (
-              <button
-                onClick={() => setShowLoginForm(!showLoginForm)}
-                className="btn-login-toggle-mobile"
-              >
-                <i className="fas fa-sign-in-alt"></i>
-                {showLoginForm ? 'Cancel' : 'Login'}
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => navigate('/register-account')}
+                  className="btn-login-toggle-mobile"
+                >
+                  <i className="fas fa-user-plus"></i>
+                  Create Account
+                </button>
+                <button
+                  onClick={() => setShowLoginForm(!showLoginForm)}
+                  className="btn-login-toggle-mobile"
+                >
+                  <i className="fas fa-sign-in-alt"></i>
+                  {showLoginForm ? 'Cancel' : 'Login'}
+                </button>
+              </div>
             )}
             
             {userData ? (

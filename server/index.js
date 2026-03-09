@@ -10,6 +10,7 @@ import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateToken, doubleCsrfProtection, cookieParser } from './middleware/csrf.js';
+import { authenticateAdmin } from './middleware/auth.js';
 import database from './config/database.js';
 import './services/emailService.js'; // Initialize email service
 import { connectRedis } from './config/redis.js';
@@ -123,12 +124,10 @@ if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '..', 'dist');
   const fs = require('fs');
   
-  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
-  console.log(`Looking for dist folder at: ${distPath}`);
-  console.log(`Dist folder exists: ${fs.existsSync(distPath)}`);
+  logger.debug('Static file serving', { NODE_ENV: process.env.NODE_ENV, distPath, exists: fs.existsSync(distPath) });
   
   if (fs.existsSync(distPath)) {
-    console.log(`Dist folder contents:`, fs.readdirSync(distPath));
+    logger.debug('Dist folder contents', { files: fs.readdirSync(distPath) });
   }
   
   app.use(express.static(distPath, {
@@ -142,9 +141,9 @@ if (process.env.NODE_ENV === 'production') {
       }
     }
   }));
-  console.log(`✅ Serving static files from: ${distPath}`);
+  logger.info('Serving static files', { path: distPath });
 } else {
-  console.log(`⚠️ Running in development mode - frontend not served`);
+  logger.debug('Running in development mode - frontend not served');
 }
 
 // ✅ Secure CORS setup
@@ -158,7 +157,7 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log(`⚠️ CORS blocked origin: ${origin}`);
+      logger.warn('CORS blocked origin', { origin: origin?.slice(0, 100) });
       // In production, allow same domain requests
       if (process.env.NODE_ENV === 'production') {
         // Allow same-origin requests in production
@@ -216,45 +215,41 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ✅ CSRF token endpoint (must be before CSRF protection)
 app.get('/api/csrf-token', (req, res) => {
-  console.log('🔐 CSRF token requested');
   try {
     // generateToken from csrf-csrf expects (req, res) and sets the secret cookie automatically
     const token = generateToken(req, res);
-    console.log('🔐 CSRF token generated successfully');
     // Also set a readable cookie for the client to access
     res.cookie('x-csrf-token', token, {
       sameSite: 'lax',
       path: '/',
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: false, // JavaScript needs to read this
     });
     res.json({ csrfToken: token });
   } catch (error) {
-    console.error('❌ Error generating CSRF token:', error);
+    logger.error('Error generating CSRF token', { error: error.message });
     res.status(500).json({ error: 'Failed to generate CSRF token' });
   }
 });
 
 // ✅ Apply general API rate limiting
 app.use('/api', apiLimiter);
-console.log('✅ Rate limiting enabled');
+logger.info('Rate limiting enabled');
 
 // ✅ Apply strict rate limiting to authentication endpoints
 app.use('/api/admin/login', authLimiter);
 app.use('/api/lead/login', authLimiter);
 
-// ✅ Cache management endpoint (development only)
-app.post('/api/clear-cache', async (req, res) => {
+// ✅ Cache management endpoint — admin only
+app.post('/api/clear-cache', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🧹 Cache clear requested');
+    logger.info('Cache clear requested', { adminId: req.admin?.id });
     
     // Clear in-memory cache
     cache.clear();
-    console.log('✅ In-memory cache cleared');
     
     // Reset database connection pool
     await database.resetPool();
-    console.log('✅ Database pool reset');
     
     // Test new connection
     const connected = await database.testConnection();
@@ -268,11 +263,10 @@ app.post('/api/clear-cache', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ Error clearing cache:', error);
+    logger.error('Error clearing cache', { error: error.message });
     res.status(500).json({
       success: false,
-      message: 'Failed to clear cache',
-      error: error.message
+      message: 'Failed to clear cache'
     });
   }
 });
@@ -313,7 +307,7 @@ app.get('/api/industries', async (req, res) => {
 
     res.json(allIndustries);
   } catch (error) {
-    console.error('Error fetching industries:', error);
+    logger.warn('Error fetching industries, returning defaults', { error: error.message });
     // Return defaults even if database fails
     res.json([
       { id: 'default-1', name: 'Financial Services', is_active: true },
@@ -344,7 +338,7 @@ app.use('/api/questions', responseRouter);
 // ✅ Admin routes (CSRF enabled, but login route will skip it internally)
 app.use('/api/admin', adminRouter);
 
-console.log('✅ CSRF protection configured');
+logger.info('CSRF protection configured');
 
 // Root endpoint
 app.get('/', (req, res) => {

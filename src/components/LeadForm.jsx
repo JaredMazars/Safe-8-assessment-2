@@ -4,7 +4,7 @@ import api from '../services/api';
 import { COMPANY_SIZES, COUNTRIES } from '../config/api';
 import { COUNTRY_CODES, formatPhoneNumber, validatePhoneNumber, getCountryCode } from '../config/countryCodes';
 
-const LeadForm = ({ assessmentType, industry, onSubmit }) => {
+const LeadForm = ({ assessmentType, industry, onSubmit, createAccountOnly = false }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -181,9 +181,9 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
         companyName: formData.company,
         companySize: formData.companySize,
         country: formData.country,
-        industry: industry,
+        industry: industry || 'Not Specified',
         password: formData.password,
-        leadSource: 'Web Assessment'
+        leadSource: createAccountOnly ? 'Web Registration' : 'Web Assessment'
       };
 
       // Submit lead to backend
@@ -200,8 +200,8 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
           industry
         };
         onSubmit(leadInfo);
-        // Navigate to assessment
-        navigate('/assessment');
+        // Navigate to dashboard (account-only) or assessment
+        navigate(createAccountOnly ? '/dashboard' : '/assessment');
       } else {
         throw new Error('Failed to create lead');
       }
@@ -225,23 +225,25 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
         {/* Header */}
         <div className="leadform-header">
           <h1 className="leadform-title">SAFE-8 AI Readiness Framework</h1>
-          <p className="leadform-subtitle">Create Your Account</p>
+          <p className="leadform-subtitle">{createAccountOnly ? 'Create Your Account to Get Started' : 'Create Your Account'}</p>
         </div>
 
-        {/* Assessment Details Banner */}
-        <div className="assessment-info-banner">
-          <h3 className="banner-title">Your Selected Assessment</h3>
-          <div className="assessment-details">
-            <div className="detail-item">
-              <span className="detail-label">Assessment Type:</span>
-              <div className="detail-value">{assessmentType}</div>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Industry:</span>
-              <div className="detail-value">{industry}</div>
+        {/* Assessment Details Banner - only shown when coming from assessment selection */}
+        {!createAccountOnly && (
+          <div className="assessment-info-banner">
+            <h3 className="banner-title">Your Selected Assessment</h3>
+            <div className="assessment-details">
+              <div className="detail-item">
+                <span className="detail-label">Assessment Type:</span>
+                <div className="detail-value">{assessmentType}</div>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Industry:</span>
+                <div className="detail-value">{industry}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Lead Form */}
         <form onSubmit={handleSubmit} className="leadform-content" id="lead-form">
@@ -549,6 +551,11 @@ const LeadForm = ({ assessmentType, industry, onSubmit }) => {
               <>
                 <i className="fas fa-spinner fa-spin"></i>
                 Creating Account...
+              </>
+            ) : createAccountOnly ? (
+              <>
+                <i className="fas fa-user-check"></i>
+                Create Account & Sign In
               </>
             ) : (
               <>

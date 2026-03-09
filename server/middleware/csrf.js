@@ -63,7 +63,10 @@ const generateCsrfToken = (req, res) => {
     
     return token;
   } catch (error) {
-    console.error('Error generating CSRF token:', error);
+    // SECURITY FIX: only log in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error generating CSRF token:', error);
+    }
     throw error;
   }
 };
@@ -73,25 +76,24 @@ export { generateCsrfToken as generateToken, doubleCsrfProtection, cookieParser 
 
 // Export a wrapped version that provides better error messages
 export const csrfProtection = (req, res, next) => {
-  console.log('🔐 CSRF Protection middleware invoked for:', req.method, req.url);
-  
-  // Skip for GET, HEAD, OPTIONS
+  // SECURITY FIX: only log CSRF flow details in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🔐 CSRF Protection middleware invoked for:', req.method, req.url);
+  }
+
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    console.log('🔐 Skipping CSRF for', req.method);
     return next();
   }
   
   // Apply the double CSRF protection
   doubleCsrfProtection(req, res, (err) => {
-    if (err) {
+    if (err && process.env.NODE_ENV !== 'production') {
+      // SECURITY FIX: never log all cookie names in production
       console.error('🔐 CSRF validation failed:', {
-        error: err.message,
-        code: err.code,
-        url: req.url,
-        method: req.method,
-        hasToken: !!req.headers['x-csrf-token'],
-        hasSecretCookie: !!req.cookies?.['csrf-secret'],
-        cookies: Object.keys(req.cookies || {})
+        error:  err.message,
+        code:   err.code,
+        url:    req.url,
+        method: req.method
       });
     }
     next(err);

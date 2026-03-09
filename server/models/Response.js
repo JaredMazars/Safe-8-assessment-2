@@ -1,5 +1,6 @@
 // models/Response.js
 import database from "../config/database.js";
+import logger from '../utils/logger.js';
 
 class Response {
   // Create new response
@@ -19,8 +20,8 @@ class Response {
         responseId: result.recordset[0]?.id 
       };
     } catch (error) {
-      console.error('Error creating response:', error);
-      return { success: false, error: error.message };
+      logger.error('Error creating response', { error: error.message });
+      return { success: false, error: 'Failed to save response' };
     }
   }
 
@@ -47,8 +48,8 @@ class Response {
           isNew: false
         };
       } catch (error) {
-        console.error('Error updating response:', error);
-        return { success: false, error: error.message };
+        logger.error('Error updating response', { error: error.message });
+        return { success: false, error: 'Failed to update response' };
       }
     } else {
       // Create new response
@@ -74,7 +75,7 @@ class Response {
       const result = await database.query(sql, [leadUserId, questionId]);
       return result.recordset[0] || null;
     } catch (error) {
-      console.error('Error getting response:', error);
+      logger.error('Error getting response', { error: error.message });
       return null;
     }
   }
@@ -88,23 +89,24 @@ class Response {
 
     try {
         const result = await database.query(sql);
-        console.log('✅ Questions loaded with SHORT pillar names');
-        return result
+        logger.debug('Questions loaded with SHORT pillar names');
+        return result;
     } catch (error) {
-        console.error('Database query failed:', error.message);
+        logger.error('Database query failed', { error: error.message });
         throw error;
     }
 }
 
   static async getByUser(leadUserId) {
+    // SECURITY FIX: use parameterized query — no string interpolation
     const sql = `
       SELECT ar.*, aq.question_text, aq.pillar_name, aq.assessment_type
       FROM assessment_responses ar
       JOIN assessment_questions aq ON ar.question_id = aq.id
-      WHERE ar.lead_user_id = ${leadUserId}
+      WHERE ar.lead_user_id = ?
       ORDER BY aq.pillar_name, aq.question_order;
     `;
-    const result = await database.query(sql);
+    const result = await database.query(sql, [parseInt(leadUserId)]);
     return result.recordset;
   }
 

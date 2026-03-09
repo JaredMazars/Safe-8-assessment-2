@@ -77,23 +77,29 @@ class UserActivity {
         leadId = null
       } = options;
 
-      const offset = (parseInt(page) - 1) * parseInt(limit);
-      let whereConditions = [];
+      const pageNum  = Math.max(1, parseInt(page));
+      const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
+      const offset   = (pageNum - 1) * limitNum;
+
+      // SECURITY FIX: use ? parameterized placeholders — no string interpolation
+      const filterConditions = [];
+      const filterParams     = [];
 
       if (actionType && actionType !== 'all') {
-        whereConditions.push(`ual.action_type = '${actionType.replace(/'/g, "''")}'`);
+        filterConditions.push('ual.action_type = ?');
+        filterParams.push(actionType);
       }
-
       if (entityType && entityType !== 'all') {
-        whereConditions.push(`ual.entity_type = '${entityType.replace(/'/g, "''")}'`);
+        filterConditions.push('ual.entity_type = ?');
+        filterParams.push(entityType);
       }
-
       if (leadId) {
-        whereConditions.push(`ual.lead_id = ${parseInt(leadId)}`);
+        filterConditions.push('ual.lead_id = ?');
+        filterParams.push(parseInt(leadId));
       }
 
-      const whereClause = whereConditions.length > 0 
-        ? `WHERE ${whereConditions.join(' AND ')}`
+      const whereClause = filterConditions.length > 0
+        ? `WHERE ${filterConditions.join(' AND ')}`
         : '';
 
       // Get total count
@@ -102,12 +108,14 @@ class UserActivity {
         FROM user_activity_log ual
         ${whereClause}
       `;
-      const countResult = await database.query(countSql);
-      const total = Array.isArray(countResult) ? countResult[0].total : countResult.recordset[0].total;
+      const countResult = await database.query(countSql, [...filterParams]);
+      const total = Array.isArray(countResult)
+        ? countResult[0].total
+        : countResult.recordset[0].total;
 
-      // Get activities
+      // Get activities — OFFSET parameterized too
       const sql = `
-        SELECT 
+        SELECT
           ual.id,
           ual.lead_id,
           l.contact_name as user_name,
@@ -124,21 +132,21 @@ class UserActivity {
         INNER JOIN leads l ON ual.lead_id = l.id
         ${whereClause}
         ORDER BY ual.created_at DESC
-        OFFSET ${offset} ROWS FETCH NEXT ${parseInt(limit)} ROWS ONLY
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
       `;
 
-      const result = await database.query(sql);
+      const result = await database.query(sql, [...filterParams, offset, limitNum]);
       const activities = Array.isArray(result) ? result : result.recordset;
 
       return {
         activities,
         pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(total / parseInt(limit)),
+          current_page: pageNum,
+          total_pages: Math.ceil(total / limitNum),
           total_items: total,
-          items_per_page: parseInt(limit),
-          has_prev: parseInt(page) > 1,
-          has_next: parseInt(page) < Math.ceil(total / parseInt(limit))
+          items_per_page: limitNum,
+          has_prev: pageNum > 1,
+          has_next: pageNum < Math.ceil(total / limitNum)
         }
       };
     } catch (error) {

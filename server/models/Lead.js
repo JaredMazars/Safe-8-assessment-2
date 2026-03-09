@@ -1,9 +1,11 @@
-import database from "../config/database.js";
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import logger from '../utils/logger.js';
 
 const SALT_ROUNDS = 12; // Industry standard for 2026
+
+// Prevents timing-based user enumeration: always run bcrypt.compare even when no user is found
+const DUMMY_HASH = '$2b$12$invalidhashfortimingprotectionXXXXXXXXXXXXXXXXXXXXXXXX';
 
 /**
  * Lead Model - Handles lead/user data persistence and authentication
@@ -32,7 +34,7 @@ class Lead {
     contactName, jobTitle, email, phoneNumber,
     companyName, companySize, country, industry, password
   }) {
-    logger.info('Creating new lead', { email, companyName });
+    logger.info('Creating new lead', { companyName });
     try {
       // Hash the password before storing with timeout protection
       logger.debug('Starting password hash');
@@ -62,8 +64,7 @@ class Lead {
       request.input('country', sql.NVarChar, country || '');
       request.input('industry', sql.NVarChar, industry || '');
       request.input('passwordHash', sql.NVarChar, passwordHash);
-      console.log('  ✓ passwordHash');
-      console.log('🔍 All parameters added');
+      logger.debug('All parameters added');
       
       const sqlQuery = `
         INSERT INTO leads (
@@ -79,21 +80,20 @@ class Lead {
         );
       `;
       
-      console.log('🔍 Executing INSERT...');
       const queryPromise = request.query(sqlQuery);
       const queryTimeout = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Database query timeout after 10s')), 10000)
       );
       
       const result = await Promise.race([queryPromise, queryTimeout]);
-      console.log('✅ INSERT success, ID:', result.recordset[0]?.id);
+      logger.info('Lead created successfully');
       
       return { 
         success: true, 
         leadId: result.recordset[0]?.id 
       };
     } catch (error) {
-      console.error('❌ Error creating lead:', error.message);
+      logger.error('Error creating lead', { error: error.message });
       // SQL Server unique constraint violation codes
       if (error.number === 2627 || error.number === 2601) {
         return { success: false, duplicate: true, error: 'Email already registered' };
@@ -106,32 +106,39 @@ class Lead {
   }
 
   static async getAll() {
-    const sql = `
-      SELECT id, contact_name, job_title, email, phone_number,
-             company_name, company_size, country, industry, lead_source, created_at
-      FROM leads
-      ORDER BY created_at DESC;
-    `;
-
     try {
-      const result = await database.query(sql);
+      const { getPool, sql } = await import('../config/database.js');
+      const pool = await getPool();
+      const request = pool.request();
+      const result = await request.query(`
+        SELECT id, contact_name, job_title, email, phone_number,
+               company_name, company_size, country, industry, lead_source, created_at
+        FROM leads
+        ORDER BY created_at DESC;
+      `);
       return result.recordset || [];
     } catch (error) {
-      console.error('Error getting all leads:', error);
+      logger.error('Error getting all leads', { error: error.message });
       return [];
     }
   }
 
   static async getById(leadId) {
-    const sql = `
-      SELECT * FROM leads WHERE id = ?;
-    `;
-
     try {
-      const result = await database.query(sql, [leadId]);
+      const { getPool, sql } = await import('../config/database.js');
+      const pool = await getPool();
+      const request = pool.request();
+      request.input('leadId', sql.Int, leadId);
+      const result = await request.query(`
+        SELECT id, contact_name, job_title, email, phone_number,
+               company_name, company_size, country, industry, lead_source,
+               account_locked, login_attempts, must_change_password,
+               last_login_at, created_at, updated_at
+        FROM leads WHERE id = @leadId;
+      `);
       return result.recordset[0] || null;
     } catch (error) {
-      console.error('Error getting lead by ID:', error);
+      logger.error('Error getting lead by ID', { error: error.message });
       return null;
     }
   }
@@ -144,155 +151,175 @@ class Lead {
       const request = pool.request();
       request.input('email', sql.NVarChar, email);
       
-      const sqlQuery = 'SELECT * FROM leads WHERE email = @email;';
+      // NOTE: password_hash intentionally included — callers that need auth use this method
+      const sqlQuery = `
+        SELECT id, contact_name, job_title, email, phone_number,
+               company_name, company_size, country, industry, lead_source,
+               password_hash, account_locked, locked_until, login_attempts,
+               must_change_password, password_reset_token, password_reset_expires,
+               last_login_at, created_at, updated_at
+        FROM leads WHERE email = @email;
+      `;
       
       const result = await request.query(sqlQuery);
       return result.recordset[0] || null;
     } catch (error) {
-      console.error('❌ Error getting lead by email:', error.message);
-      throw error; // propagate so callers can handle properly
+      logger.error('Error getting lead by email', { error: error.message });
+      throw error;
     }
   }
 
   static async updateOrCreate(leadData) {
-    console.log('🔍 updateOrCreate called with:', { email: leadData.email });
+    logger.debug('updateOrCreate called');
     try {
-      // First check if lead exists
-      console.log('🔍 Checking if lead exists...');
       const existingLead = await this.getByEmail(leadData.email);
-      console.log('🔍 Existing lead result:', existingLead ? `Found: ${existingLead.id}` : 'Not found');
-    
-    if (existingLead) {
-      // Hash password if provided
-      const passwordHash = leadData.password ? await bcrypt.hash(leadData.password, SALT_ROUNDS) : null;
-      
-      // Update existing lead
-      const sql = passwordHash 
-        ? `
-          UPDATE leads SET
-            contact_name = ?, job_title = ?, phone_number = ?,
-            company_name = ?, company_size = ?, country = ?, 
-            industry = ?, password_hash = ?, password_updated_at = GETDATE(), updated_at = GETDATE()
-          WHERE email = ?;
-        `
-        : `
-          UPDATE leads SET
-            contact_name = ?, job_title = ?, phone_number = ?,
-            company_name = ?, company_size = ?, country = ?, 
-            industry = ?, updated_at = GETDATE()
-          WHERE email = ?;
-        `;
-      
-      try {
-        const params = passwordHash
-          ? [leadData.contactName, leadData.jobTitle, leadData.phoneNumber,
-             leadData.companyName, leadData.companySize, leadData.country,
-             leadData.industry, passwordHash, leadData.email]
-          : [leadData.contactName, leadData.jobTitle, leadData.phoneNumber,
-             leadData.companyName, leadData.companySize, leadData.country,
-             leadData.industry, leadData.email];
-             
-        await database.query(sql, params);
-        return { 
-          success: true, 
-          leadId: existingLead.id,
-          isNew: false
-        };
-      } catch (error) {
-        console.error('Error updating lead:', error);
-        return { success: false, error: error.message };
+
+      if (existingLead) {
+        const passwordHash = leadData.password
+          ? await bcrypt.hash(leadData.password, SALT_ROUNDS)
+          : null;
+
+        const { getPool, sql } = await import('../config/database.js');
+        const pool = await getPool();
+        const request = pool.request();
+
+        request.input('contactName', sql.NVarChar, leadData.contactName);
+        request.input('jobTitle',    sql.NVarChar, leadData.jobTitle    || '');
+        request.input('phoneNumber', sql.NVarChar, leadData.phoneNumber || '');
+        request.input('companyName', sql.NVarChar, leadData.companyName);
+        request.input('companySize', sql.NVarChar, leadData.companySize || '');
+        request.input('country',     sql.NVarChar, leadData.country     || '');
+        request.input('industry',    sql.NVarChar, leadData.industry    || '');
+        request.input('email',       sql.NVarChar, leadData.email);
+
+        let updateQuery;
+        if (passwordHash) {
+          request.input('passwordHash', sql.NVarChar, passwordHash);
+          updateQuery = `
+            UPDATE leads SET
+              contact_name = @contactName, job_title = @jobTitle, phone_number = @phoneNumber,
+              company_name = @companyName, company_size = @companySize, country = @country,
+              industry = @industry, password_hash = @passwordHash,
+              password_updated_at = GETDATE(), updated_at = GETDATE()
+            WHERE email = @email;
+          `;
+        } else {
+          updateQuery = `
+            UPDATE leads SET
+              contact_name = @contactName, job_title = @jobTitle, phone_number = @phoneNumber,
+              company_name = @companyName, company_size = @companySize, country = @country,
+              industry = @industry, updated_at = GETDATE()
+            WHERE email = @email;
+          `;
+        }
+
+        await request.query(updateQuery);
+        return { success: true, leadId: existingLead.id, isNew: false };
+
+      } else {
+        const createResult = await this.create(leadData);
+        return createResult.success ? { ...createResult, isNew: true } : createResult;
       }
-    } else {
-      // Create new lead
-      console.log('🔍 Creating new lead...');
-      const createResult = await this.create(leadData);
-      console.log('🔍 Create result:', createResult);
-      if (createResult.success) {
-        return { 
-          ...createResult, 
-          isNew: true 
-        };
-      }
-      return createResult;
-    }
     } catch (error) {
-      console.error('❌ Error in updateOrCreate:', error.message);
-      return { 
-        success: false, 
-        error: error.message 
-      };
+      logger.error('Error in updateOrCreate', { error: error.message });
+      return { success: false, error: error.message };
     }
   }
 
   static async verifyPassword(email, password) {
     try {
       const lead = await this.getByEmail(email);
-      
+
+      // FIX: Always run bcrypt.compare to prevent timing-based user enumeration
+      const hashToCompare = lead?.password_hash || DUMMY_HASH;
+      const isValid = await bcrypt.compare(password, hashToCompare);
+
+      // FIX: Generic message — never confirm whether email exists
       if (!lead) {
-        return { success: false, message: 'User not found' };
+        return { success: false, message: 'Invalid credentials' };
       }
 
-      // Check if account is locked
-      if (lead.account_locked && lead.locked_until && new Date(lead.locked_until) > new Date()) {
-        return { 
-          success: false, 
-          message: 'Account is locked. Please try again later.',
-          locked: true 
-        };
+      // FIX: Lock if account_locked=1 regardless of whether locked_until is set
+      if (lead.account_locked) {
+        const isPermanentLock = !lead.locked_until;
+        const isTimedLock = lead.locked_until && new Date(lead.locked_until) > new Date();
+        if (isPermanentLock || isTimedLock) {
+          return {
+            success: false,
+            message: 'Account is locked. Please contact support or reset your password.',
+            locked: true
+          };
+        }
       }
 
-      // Check if password exists
       if (!lead.password_hash) {
-        return { 
-          success: false, 
-          message: 'No password set for this account. Please reset your password.' 
+        return {
+          success: false,
+          message: 'No password set for this account. Please reset your password.'
         };
       }
 
-      // Verify password
-      const isValid = await bcrypt.compare(password, lead.password_hash);
-      
-      // Update login attempts
+      const { getPool, sql } = await import('../config/database.js');
+      const pool = await getPool();
+
       if (isValid) {
-        // Reset failed attempts on successful login
-        await database.query(`
-          UPDATE leads 
-          SET login_attempts = 0, 
-              account_locked = 0, 
-              locked_until = NULL,
-              last_login_at = GETDATE()
-          WHERE email = ?
-        `, [email]);
-        
+        // FIX: Use parameterised queries — not ? placeholders
+        const request = pool.request();
+        request.input('email', sql.NVarChar, email);
+        await request.query(`
+          UPDATE leads
+          SET login_attempts = 0,
+              account_locked = 0,
+              locked_until   = NULL,
+              last_login_at  = GETDATE()
+          WHERE email = @email;
+        `);
+
+        // FIX: Re-hash transparently on login if SALT_ROUNDS has increased
+        const currentRounds = bcrypt.getRounds(lead.password_hash);
+        if (currentRounds < SALT_ROUNDS) {
+          const newHash = await bcrypt.hash(password, SALT_ROUNDS);
+          const rehashReq = pool.request();
+          rehashReq.input('email',        sql.NVarChar, email);
+          rehashReq.input('passwordHash', sql.NVarChar, newHash);
+          await rehashReq.query(
+            'UPDATE leads SET password_hash = @passwordHash WHERE email = @email;'
+          );
+          logger.info('Password re-hashed with updated salt rounds');
+        }
+
         return { success: true, lead };
+
       } else {
-        // Increment failed attempts
         const newAttempts = (lead.login_attempts || 0) + 1;
-        const shouldLock = newAttempts >= 5;
-        
-        await database.query(`
-          UPDATE leads 
-          SET login_attempts = ?,
-              account_locked = ?,
-              locked_until = ?
-          WHERE email = ?
-        `, [
-          newAttempts,
-          shouldLock ? 1 : 0,
-          shouldLock ? new Date(Date.now() + 30 * 60 * 1000).toISOString() : null,
-          email
-        ]);
-        
-        return { 
-          success: false, 
-          message: shouldLock 
+        const shouldLock  = newAttempts >= 5;
+
+        const request = pool.request();
+        request.input('email',       sql.NVarChar, email);
+        request.input('newAttempts', sql.Int,      newAttempts);
+        request.input('shouldLock',  sql.Bit,      shouldLock ? 1 : 0);
+        request.input('lockedUntil', sql.DateTime,
+          shouldLock ? new Date(Date.now() + 30 * 60 * 1000) : null
+        );
+        await request.query(`
+          UPDATE leads
+          SET login_attempts = @newAttempts,
+              account_locked = @shouldLock,
+              locked_until   = @lockedUntil
+          WHERE email = @email;
+        `);
+
+        return {
+          success: false,
+          message: shouldLock
             ? 'Too many failed attempts. Account locked for 30 minutes.'
-            : `Invalid password. ${5 - newAttempts} attempts remaining.`,
-          attemptsRemaining: 5 - newAttempts
+            : 'Invalid credentials.',
+          // FIX: Don't leak remaining attempts after lockout threshold
+          attemptsRemaining: shouldLock ? 0 : 5 - newAttempts
         };
       }
     } catch (error) {
-      console.error('Error verifying password:', error);
+      logger.error('Error verifying password', { error: error.message });
       return { success: false, message: 'Error verifying credentials' };
     }
   }
@@ -305,8 +332,10 @@ class Lead {
     try {
       const lead = await this.getByEmail(email);
       
+      // FIX: Generic message — never confirm whether email exists
       if (!lead) {
-        return { success: false, message: 'User not found' };
+        logger.info('Reset token requested for unknown email (suppressed)');
+        return { success: true, message: 'If that email exists, a reset link has been sent.' };
       }
 
       // Generate secure random token
@@ -332,7 +361,7 @@ class Lead {
 
       await request.query(updateQuery);
 
-      console.log('✅ Password reset token created for:', email);
+      logger.info('Password reset token created');
 
       return {
         success: true,
@@ -344,7 +373,7 @@ class Lead {
         }
       };
     } catch (error) {
-      console.error('❌ Error creating reset token:', error.message);
+      logger.error('Error creating reset token', { error: error.message });
       return { success: false, message: 'Error creating reset token' };
     }
   }
@@ -381,7 +410,7 @@ class Lead {
         leadId: lead.id
       };
     } catch (error) {
-      console.error('❌ Error verifying reset token:', error.message);
+      logger.error('Error verifying reset token', { error: error.message });
       return { success: false, message: 'Error verifying token' };
     }
   }
@@ -423,7 +452,7 @@ class Lead {
 
       await request.query(updateQuery);
 
-      console.log('✅ Password reset successful for:', verifyResult.email);
+      logger.info('Password reset successful');
 
       return {
         success: true,
@@ -431,7 +460,7 @@ class Lead {
         message: 'Password has been reset successfully'
       };
     } catch (error) {
-      console.error('❌ Error resetting password:', error.message);
+      logger.error('Error resetting password', { error: error.message });
       return { success: false, message: 'Error resetting password' };
     }
   }

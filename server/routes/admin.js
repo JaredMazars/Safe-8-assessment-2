@@ -6,6 +6,7 @@ import Lead from '../models/Lead.js';
 import database from '../config/database.js';
 import cache from '../config/simpleCache.js';
 import { validateAdminLogin, validatePasswordChange, validateId, validatePagination } from '../middleware/validation.js';
+import logger from '../utils/logger.js';
 import { doubleCsrfProtection } from '../middleware/csrf.js';
 import emailService from '../services/emailService.js';
 import { generateAssessmentPDFBuffer } from '../services/pdfService.js';
@@ -17,16 +18,8 @@ import { sanitizeLog } from '../utils/logger.js';
 
 dotenv.config();
 
-const dbConfig = {
-  server: process.env.DB_SERVER,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  options: {
-    encrypt: true,
-    trustServerCertificate: process.env.NODE_ENV !== 'production'
-  }
-};
+// SECURITY FIX: removed unused dbConfig object that contained
+// trustServerCertificate: true in non-production environments
 
 const router = express.Router();
 
@@ -119,18 +112,14 @@ router.post('/login', validateAdminLogin, async (req, res) => {
     const result = await Admin.authenticate(username, password, ipAddress, userAgent);
 
     if (result.success) {
-      console.log('✅ Admin logged in:', sanitizeLog(result.admin.username));
+      logger.info('Admin login successful', { username: sanitizeLog(username) });
       res.json(result);
     } else {
-      console.log('❌ Login failed:', result.message);
+      logger.warn('Admin login failed', { username: sanitizeLog(username) });
       res.status(401).json(result);
     }
   } catch (error) {
-    console.error('❌ Login error details:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    });
+    logger.error('Admin login error', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Login error',
@@ -144,19 +133,11 @@ router.post('/logout', doubleCsrfProtection, authenticateAdmin, async (req, res)
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     await Admin.logout(token);
-    
-    console.log('✅ Admin logged out:', sanitizeLog(req.admin.username));
-    
-    res.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
+    logger.info('Admin logged out', { username: sanitizeLog(req.admin.username) });
+    res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
-    console.error('❌ Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Logout error'
-    });
+    logger.error('Logout error', { error: error.message });
+    res.status(500).json({ success: false, message: 'Logout error' });
   }
 });
 
@@ -170,7 +151,7 @@ router.get('/verify', authenticateAdmin, (req, res) => {
 
 // Change password
 // Change password (CSRF protected)
-router.post('/change-password', doubleCsrfProtection, authenticateAdmin, async (req, res) => {
+router.post('/change-password', doubleCsrfProtection, authenticateAdmin, validatePasswordChange, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
 
@@ -189,18 +170,15 @@ router.post('/change-password', doubleCsrfProtection, authenticateAdmin, async (
     }
 
     const result = await Admin.changePassword(req.admin.id, oldPassword, newPassword);
-    
+
     if (result.success) {
       await Admin.logActivity(req.admin.id, 'UPDATE', 'admin', req.admin.id, 'Password changed', req.ip, req.headers['user-agent']);
     }
 
     res.json(result);
   } catch (error) {
-    console.error('❌ Change password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error changing password'
-    });
+    logger.error('Change password error', { error: error.message });
+    res.status(500).json({ success: false, message: 'Error changing password' });
   }
 });
 
@@ -218,11 +196,8 @@ router.get('/dashboard/stats', authenticateAdmin, async (req, res) => {
       stats
     });
   } catch (error) {
-    console.error('❌ Error getting dashboard stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching dashboard statistics'
-    });
+    logger.error('Error getting dashboard stats', { error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching dashboard statistics' });
   }
 });
 
@@ -427,7 +402,7 @@ router.get('/questions', authenticateAdmin, async (req, res) => {
     const result = await database.query(sql, params);
     const questions = Array.isArray(result) ? result : result.recordset;
 
-    console.log(`✅ Loaded ${questions.length} questions (Total: ${total})`);
+    logger.debug('Questions loaded', { count: questions.length, total });
 
     res.json({
       success: true,
@@ -522,7 +497,7 @@ router.post('/questions', authenticateAdmin, async (req, res) => {
 
     await Admin.logActivity(req.admin.id, 'CREATE', 'question', questionId, `Created question: ${question_text.substring(0, 50)}...`, req.ip, req.headers['user-agent']);
 
-    console.log('✅ Question created:', questionId);
+    logger.info('Question created', { questionId });
 
     res.json({
       success: true,
@@ -530,12 +505,8 @@ router.post('/questions', authenticateAdmin, async (req, res) => {
       message: 'Question created successfully'
     });
   } catch (error) {
-    console.error('❌ Error creating question:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating question',
-      error: error.message
-    });
+    logger.error('Error creating question', { error: error.message });
+    res.status(500).json({ success: false, message: 'Error creating question' });
   }
 });
 
@@ -595,19 +566,11 @@ router.put('/questions/:questionId', authenticateAdmin, async (req, res) => {
 
     await Admin.logActivity(req.admin.id, 'UPDATE', 'question', questionId, `Updated question`, req.ip, req.headers['user-agent']);
 
-    console.log('✅ Question updated:', questionId);
-
-    res.json({
-      success: true,
-      message: 'Question updated successfully'
-    });
+    logger.info('Question updated', { questionId });
+    res.json({ success: true, message: 'Question updated successfully' });
   } catch (error) {
-    console.error('❌ Error updating question:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating question',
-      error: error.message
-    });
+    logger.error('Error updating question', { error: error.message });
+    res.status(500).json({ success: false, message: 'Error updating question' });
   }
 });
 
@@ -621,18 +584,11 @@ router.delete('/questions/:questionId', authenticateAdmin, async (req, res) => {
 
     await Admin.logActivity(req.admin.id, 'DELETE', 'question', questionId, `Deleted question`, req.ip, req.headers['user-agent']);
 
-    console.log('✅ Question deleted:', questionId);
-
-    res.json({
-      success: true,
-      message: 'Question deleted successfully'
-    });
+    logger.info('Question deleted', { questionId });
+    res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error) {
-    console.error('❌ Error deleting question:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting question'
-    });
+    logger.error('Error deleting question', { error: error.message });
+    res.status(500).json({ success: false, message: 'Error deleting question' });
   }
 });
 
@@ -761,95 +717,50 @@ router.get('/activity-log', authenticateAdmin, async (req, res) => {
 // Get audit logs/activity log
 router.get('/audit-logs', authenticateAdmin, async (req, res) => {
   try {
-    console.log('📋 Fetching audit logs...');
-    
     const { limit = 100, offset = 0, action_type, admin_id } = req.query;
-    
+    const limitNum  = Math.min(500, Math.max(1, parseInt(limit)));
+    const offsetNum = Math.max(0, parseInt(offset));
+
+    // SECURITY FIX: use ? positional placeholders — @named params are not supported by database.query()
     let query = `
-      SELECT 
-        aal.id,
-        aal.admin_id,
-        au.username as admin_username,
-        au.full_name as admin_name,
-        aal.action_type,
-        aal.entity_type,
-        aal.entity_id,
-        aal.description,
-        aal.ip_address,
-        aal.user_agent,
-        aal.created_at
+      SELECT
+        aal.id, aal.admin_id,
+        au.username as admin_username, au.full_name as admin_name,
+        aal.action_type, aal.entity_type, aal.entity_id,
+        aal.description, aal.ip_address, aal.user_agent, aal.created_at
       FROM admin_activity_log aal
       LEFT JOIN admin_users au ON aal.admin_id = au.id
       WHERE 1=1
     `;
-    
     const params = [];
-    
-    if (action_type) {
-      query += ` AND aal.action_type = @action_type`;
-      params.push({ name: 'action_type', type: 'NVarChar', value: action_type });
-    }
-    
-    if (admin_id) {
-      query += ` AND aal.admin_id = @admin_id`;
-      params.push({ name: 'admin_id', type: 'Int', value: parseInt(admin_id) });
-    }
-    
-    query += ` ORDER BY aal.created_at DESC
-              OFFSET @offset ROWS
-              FETCH NEXT @limit ROWS ONLY`;
-    
-    params.push(
-      { name: 'offset', type: 'Int', value: parseInt(offset) },
-      { name: 'limit', type: 'Int', value: parseInt(limit) }
-    );
-    
+    if (action_type) { query += ' AND aal.action_type = ?'; params.push(action_type); }
+    if (admin_id)    { query += ' AND aal.admin_id = ?';    params.push(parseInt(admin_id)); }
+    query += ' ORDER BY aal.created_at DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY';
+    params.push(offsetNum, limitNum);
+
     const result = await database.query(query, params);
-    const logs = result.recordset || result;
-    
-    // Get total count
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM admin_activity_log aal
-      WHERE 1=1
-    `;
-    
-    const countParams = [];
-    
-    if (action_type) {
-      countQuery += ` AND aal.action_type = @action_type`;
-      countParams.push({ name: 'action_type', type: 'NVarChar', value: action_type });
-    }
-    
-    if (admin_id) {
-      countQuery += ` AND aal.admin_id = @admin_id`;
-      countParams.push({ name: 'admin_id', type: 'Int', value: parseInt(admin_id) });
-    }
-    
-    const countResult = await database.query(countQuery, countParams);
-    const total = countResult.recordset?.[0]?.total || countResult[0]?.total || 0;
-    
-    console.log(`✅ Found ${logs.length} audit logs (Total: ${total})`);
-    console.log('📊 Sample log data:', JSON.stringify(logs.slice(0, 2), null, 2));
-    
+    const logs   = result.recordset || result;
+
+    // Total count — reuse same filter params (without offset/limit)
+    let countQuery  = `SELECT COUNT(*) as total FROM admin_activity_log aal WHERE 1=1`;
+    const cntParams = [];
+    if (action_type) { countQuery += ' AND aal.action_type = ?'; cntParams.push(action_type); }
+    if (admin_id)    { countQuery += ' AND aal.admin_id = ?';    cntParams.push(parseInt(admin_id)); }
+
+    const countResult = await database.query(countQuery, cntParams);
+    const total = countResult.recordset?.[0]?.total ?? countResult[0]?.total ?? 0;
+
+    logger.info('Audit logs fetched', { count: logs.length, total });
+
     res.json({
       success: true,
       logs,
-      pagination: {
-        total,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: (parseInt(offset) + logs.length) < total
-      }
+      pagination: { total, limit: limitNum, offset: offsetNum, hasMore: (offsetNum + logs.length) < total }
     });
-    
+
   } catch (error) {
-    console.error('❌ Error fetching audit logs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch audit logs',
-      error: error.message
-    });
+    logger.error('Error fetching audit logs', { error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch audit logs' });
   }
 });
 

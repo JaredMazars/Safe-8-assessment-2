@@ -170,6 +170,19 @@ function App() {
         } 
       />
 
+      {/* Create Account (without requiring assessment selection) */}
+      <Route 
+        path="/register-account" 
+        element={
+          <LeadForm
+            assessmentType={null}
+            industry={null}
+            onSubmit={handleLeadSubmit}
+            createAccountOnly={true}
+          />
+        } 
+      />
+
       {/* User Dashboard */}
       <Route 
         path="/dashboard" 

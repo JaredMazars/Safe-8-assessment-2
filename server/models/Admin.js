@@ -1,6 +1,7 @@
 import database from "../config/database.js";
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import logger from '../utils/logger.js';
 
 const SALT_ROUNDS = 10;
 const SESSION_DURATION_HOURS = 8;
@@ -37,11 +38,8 @@ class Admin {
         adminId: result.recordset[0]?.id 
       };
     } catch (error) {
-      console.error('❌ Error creating admin:', error);
-      return { 
-        success: false, 
-        error: error.message 
-      };
+      logger.error('Error creating admin', { error: error.message });
+      return { success: false, message: 'Failed to create admin' };
     }
   }
 
@@ -88,8 +86,8 @@ class Admin {
           isNew: false
         };
       } catch (error) {
-        console.error('❌ Error updating admin:', error);
-        return { success: false, error: error.message };
+        logger.error('Error updating admin', { error: error.message });
+        return { success: false, message: 'Failed to update admin' };
       }
     } else {
       // Create new admin
@@ -214,7 +212,7 @@ class Admin {
         };
       }
     } catch (error) {
-      console.error('❌ Error authenticating admin:', error);
+      logger.error('Error authenticating admin', { error: error.message });
       return { success: false, message: 'Authentication error' };
     }
   }
@@ -247,7 +245,7 @@ class Admin {
       
       return { success: false, message: 'Invalid or expired session' };
     } catch (error) {
-      console.error('❌ Error verifying session:', error);
+      logger.error('Error verifying session', { error: error.message });
       return { success: false, message: 'Session verification error' };
     }
   }
@@ -258,15 +256,19 @@ class Admin {
       await database.query('DELETE FROM admin_sessions WHERE session_token = ?', [sessionToken]);
       return { success: true };
     } catch (error) {
-      console.error('❌ Error logging out:', error);
-      return { success: false, error: error.message };
+      logger.error('Error logging out admin', { error: error.message });
+      return { success: false, message: 'Logout failed' };
     }
   }
 
-  // Get admin by username or email
+  // Get admin by username or email (includes password_hash for authentication)
   static async getByUsernameOrEmail(usernameOrEmail) {
     const sql = `
-      SELECT * FROM admin_users 
+      SELECT id, username, email, full_name, role, is_active,
+             password_hash, account_locked, login_attempts, locked_until,
+             session_token, session_expires, must_change_password,
+             last_login_at, created_at, updated_at
+      FROM admin_users 
       WHERE username = ? OR email = ?;
     `;
 
@@ -274,20 +276,26 @@ class Admin {
       const result = await database.query(sql, [usernameOrEmail, usernameOrEmail]);
       return result.recordset[0] || null;
     } catch (error) {
-      console.error('❌ Error getting admin:', error);
+      logger.error('Error getting admin by username/email', { error: error.message });
       return null;
     }
   }
 
-  // Get admin by email
+  // Get admin by email (includes password_hash for auth/reset operations)
   static async getByEmail(email) {
-    const sql = `SELECT * FROM admin_users WHERE email = ?;`;
+    const sql = `
+      SELECT id, username, email, full_name, role, is_active,
+             password_hash, account_locked, login_attempts, locked_until,
+             session_token, session_expires, must_change_password,
+             last_login_at, created_at, updated_at
+      FROM admin_users WHERE email = ?;
+    `;
 
     try {
       const result = await database.query(sql, [email]);
       return result.recordset[0] || null;
     } catch (error) {
-      console.error('❌ Error getting admin by email:', error);
+      logger.error('Error getting admin by email', { error: error.message });
       return null;
     }
   }
@@ -304,7 +312,7 @@ class Admin {
       const result = await database.query(sql, [adminId]);
       return result.recordset[0] || null;
     } catch (error) {
-      console.error('❌ Error getting admin by ID:', error);
+      logger.error('Error getting admin by ID', { error: error.message });
       return null;
     }
   }
@@ -321,7 +329,7 @@ class Admin {
       const result = await database.query(sql);
       return result.recordset || [];
     } catch (error) {
-      console.error('❌ Error getting all admins:', error);
+      logger.error('Error getting all admins', { error: error.message });
       return [];
     }
   }
@@ -359,8 +367,8 @@ class Admin {
 
       return { success: true, message: 'Password changed successfully. Please log in again.' };
     } catch (error) {
-      console.error('❌ Error changing password:', error);
-      return { success: false, error: error.message };
+      logger.error('Error changing admin password', { error: error.message });
+      return { success: false, message: 'Failed to change password' };
     }
   }
 
@@ -374,7 +382,7 @@ class Admin {
       
       return { success: true };
     } catch (error) {
-      console.error('❌ Error logging activity:', error);
+      logger.warn('Error logging admin activity', { error: error.message });
       return { success: false };
     }
   }
@@ -418,7 +426,7 @@ class Admin {
       const result = await database.query(sql, params);
       return result.recordset || [];
     } catch (error) {
-      console.error('❌ Error getting activity log:', error);
+      logger.error('Error getting activity log', { error: error.message });
       return [];
     }
   }
@@ -467,7 +475,7 @@ class Admin {
         `)
       ]);
 
-      console.log('📊 Stats queries completed, processing results...');
+      logger.debug('Stats queries completed, processing results');
       
       // Handle both recordset and result structures
       const getResult = (queryResult) => {
@@ -488,7 +496,7 @@ class Admin {
         recent_activity: getResult(statsQueries[5]) || []
       };
 
-      console.log('📊 Dashboard stats generated:', {
+      logger.debug('Dashboard stats generated', {
         users: stats.total_users,
         assessments: stats.total_assessments,
         questions: stats.total_questions,
@@ -497,7 +505,7 @@ class Admin {
 
       return stats;
     } catch (error) {
-      console.error('❌ Error getting dashboard stats:', error);
+      logger.error('Error getting dashboard stats', { error: error.message });
       return {
         total_users: 0,
         total_assessments: 0,
@@ -526,8 +534,8 @@ class Admin {
 
       return { success: true };
     } catch (error) {
-      console.error('❌ Error deactivating admin:', error);
-      return { success: false, error: error.message };
+      logger.error('Error deactivating admin', { error: error.message });
+      return { success: false, message: 'Failed to deactivate admin' };
     }
   }
 }

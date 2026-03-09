@@ -1,26 +1,27 @@
 import { body, param, query, validationResult } from 'express-validator';
+import logger from '../utils/logger.js';
 
 /**
  * Validation Middleware
  * Comprehensive input validation for all API endpoints
  */
 
-// ✅ Middleware to handle validation errors
+// Middleware to handle validation errors
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.error('❌ Validation errors:', errors.array());
+    logger.warn('Validation failed', { path: req.path, method: req.method, errorCount: errors.array().length });
+    // SECURITY FIX: never echo raw input values back — they may contain passwords
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
       errors: errors.array().map(err => ({
         field: err.path,
-        message: err.msg,
-        value: err.value
+        message: err.msg
+        // value intentionally omitted
       }))
     });
   }
-  console.log('✅ Validation passed');
   next();
 };
 
